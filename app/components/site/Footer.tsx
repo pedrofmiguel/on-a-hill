@@ -1,6 +1,5 @@
 import Reveal from "../reveal/Reveal";
-
-const EMAIL = "hello@pedroferreira.dev";
+import { CONTACT_EMAIL as EMAIL } from "../../site";
 
 const ELSEWHERE = [
   { label: "GitHub", href: "https://github.com/" },

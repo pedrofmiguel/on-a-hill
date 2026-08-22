@@ -5,6 +5,7 @@ import SiteBackground from "./components/site/SiteBackground";
 import SiteNav from "./components/site/SiteNav";
 import Footer from "./components/site/Footer";
 import Gate from "./components/gate/Gate";
+import { SITE_URL } from "./site";
 import SmoothScroll from "./components/site/SmoothScroll";
 
 // One face for the entire site, after the Brain Dead reference: monospace top
@@ -18,7 +19,7 @@ const martianMono = Martian_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pedroferreira.dev"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Pedro Ferreira — on a hill",
     template: "%s — Pedro Ferreira",

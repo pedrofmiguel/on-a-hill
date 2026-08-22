@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PROJECTS } from "./data/projects";
 import Reveal from "./components/reveal/Reveal";
+import { CONTACT_EMAIL } from "./site";
 import WordField from "./components/site/WordField";
 import ProjectTable from "./components/site/ProjectTable";
 
@@ -23,7 +24,7 @@ export default function Home() {
             screens, which broke the hand-set four-line composition. */}
         <Reveal delay={0.5} className="absolute right-6 top-28 hidden sm:block sm:right-10 sm:top-32">
           <a
-            href="mailto:hello@pedroferreira.dev"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="label link-rule text-ink"
           >
             Say hi ↗

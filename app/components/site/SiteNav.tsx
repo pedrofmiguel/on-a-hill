@@ -6,14 +6,13 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRevealed } from "../reveal/store";
 import { setScrollLocked } from "./SmoothScroll";
+import { CONTACT_EMAIL as EMAIL } from "../../site";
 
 const LINKS = [
   { label: "Index", href: "/" },
   { label: "Projects", href: "/projects" },
   { label: "About", href: "/about" },
 ];
-
-const EMAIL = "hello@pedroferreira.dev";
 
 const META: { title: string; lines: { text: string; href?: string }[] }[] = [
   {
