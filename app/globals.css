@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---------------------------------------------------------------------
+     PALETTE — light monochrome, one accent.
+     The whole site is paper, ink, and hairlines. Colour is a decision, not
+     decoration: `accent` appears once or twice per screen, never as filler.
+     --------------------------------------------------------------------- */
+  --color-paper: #f2efe9; /* page */
+  --color-paper-2: #e9e5dc; /* raised surfaces, hover beds */
+  --color-ink: #0b0b0b; /* headlines, primary text */
+  --color-ink-2: #6d6b64; /* secondary text, meta */
+  --color-ink-3: #a3a09a; /* tertiary — captions, indices */
+  --color-dim: #c8c5bc; /* the big dimmed display words */
+  --color-rule: oklch(0 0 0 / 0.12); /* hairlines */
+  --color-accent: #ff3b14; /* the one accent */
+
+  /* ---- Entrance gate only: the night world stays night ---- */
+  --color-night: oklch(0.14 0.045 264);
+  --color-sky: oklch(0.4 0.15 260);
+  --color-grass: oklch(0.52 0.15 145);
+  --color-grass-deep: oklch(0.22 0.09 150);
+
+  --font-sans: var(--font-martian-mono);
+  --font-mono: var(--font-martian-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans), ui-monospace, "SFMono-Regular", monospace;
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------------
+   TYPE
+
+   One face — Martian Mono — for everything, per the Brain Dead reference.
+   Two rules follow from that, and both are the opposite of what a Helvetica
+   poster wants:
+
+     1. Weight stays low. Nothing exceeds 500. In a monospace the character is
+        already in the fixed rhythm and the squared terminals, so adding weight
+        only makes it look like a different, worse typeface.
+     2. Sizes are smaller than their proportional equivalents. A wide mono eats
+        roughly 40% more horizontal space per character, so the display sizes
+        here are tuned by measurement, not by eye.
+   --------------------------------------------------------------------------- */
+
+/* Everything is already mono; this remains only to pull small runs in slightly,
+   since Martian Mono sets wide by default. */
+.mono {
+  letter-spacing: -0.02em;
+}
+
+/* Big statements. Light, wide, uppercase — a mono set large, not a bold face. */
+.display {
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+/* Sentence-case display, for prose that still wants to be large. */
+.display-soft {
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+
+/* One word in the capability field. inline-block because the per-word float is
+   a transform, and transforms do not apply to inline boxes. */
+.display-word {
+  display: inline-block;
+  font-size: clamp(1.5rem, 5vw, 5rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+/* The tiny uppercase meta labels that sit above sections. Tracking is far
+   lower than it was under the proportional face — letter-spacing a wide mono at
+   0.2em pushes a three-word label across half the screen. */
+.label {
+  font-family: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Numbers in the project table must never wobble between rows. The mono makes
+   that automatic, but this keeps the intent explicit for anything that opts
+   out of the mono later. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The small boxed "sticker" from the Brain Dead footer: a filled chip rather
+   than an outlined one, which is what stops a row of them reading as a form.
+   Used for the repeated small items — tags, tools, footer links — never for
+   anything that is the only thing of its kind on the page. */
+.sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.3rem;
+  background: var(--color-paper-2);
+  color: var(--color-ink-2);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* Only the ones that go somewhere react to the pointer. */
+a.sticker:hover,
+button.sticker:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* An underline that draws itself, rather than a colour swap. */
+.link-rule {
+  position: relative;
+  text-decoration: none;
+}
+.link-rule::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-rule:hover::after {
+  transform: scaleX(1);
+}
+
+.link-accent {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+/* ---------------------------------------------------------------------------
+   GATE / REVEAL
+   A pre-paint inline script (see layout.tsx) sets data-gate="done" on <html>
+   for returning visitors so the entrance never flashes on re-navigation.
+   --------------------------------------------------------------------------- */
+html[data-gate="done"] [data-gate-overlay] {
+  display: none !important;
+}
+
+/* Page content animates in from opacity 0 (see Reveal.tsx). Without JS that
+   would leave the page blank, so layout.tsx ships a <noscript> override that
+   forces every [data-reveal] visible. */
+
+/* ---------------------------------------------------------------------------
+   SMOOTH SCROLL (Lenis)
+   Lenis stamps these classes on <html> itself. `lenis-stopped` is how the gate
+   and the menu freeze the page; `scroll-behavior: auto` is required, since a
+   native smooth scroll and a JS-driven one fight each other for the scroll
+   position and the result stutters.
+   --------------------------------------------------------------------------- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+/* Targets `.lenis` rather than `.lenis-smooth`: Lenis only adds the latter in
+   some configurations, and a native smooth scroll left switched on underneath
+   fights the JS-driven one for the scroll position. */
+html.lenis {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* No `scroll-behavior: smooth` here — Lenis owns scrolling now, and when it
+     is switched off (reduced motion) native smoothing is unwanted anyway. */
+
+  /* Slow, barely-there cloud drift for the intro screen. */
+  .cloud-drift {
+    animation: cloudDrift var(--dur, 40s) ease-in-out infinite alternate;
+  }
+  @keyframes cloudDrift {
+    from {
+      transform: translate3d(var(--fromX, -4%), var(--fromY, 0), 0) scale(1);
+    }
+    to {
+      transform: translate3d(var(--toX, 4%), var(--toY, -2%), 0) scale(1.08);
+    }
+  }
+
+  /* Individual words in the capability field breathe on their own clock, so
+     the block never reads as one rigid slab sliding past. */
+  .word-float {
+    animation: wordFloat var(--float-dur, 14s) ease-in-out infinite alternate;
+    animation-delay: var(--float-delay, 0s);
+  }
+  @keyframes wordFloat {
+    from {
+      transform: translate3d(0, var(--float-from, 0.18em), 0);
+    }
+    to {
+      transform: translate3d(0, var(--float-to, -0.18em), 0);
+    }
+  }
+}

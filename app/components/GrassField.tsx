@@ -1,0 +1,292 @@
+"use client";
+
+import { useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
+
+const BLADE_COUNT = 42000;
+const BLADE_SEGMENTS = 4;
+const BLADE_HEIGHT = 0.52;
+const BLADE_WIDTH = 0.045;
+const FIELD_X = 24;
+const FIELD_NEAR = 4.5;
+const FIELD_FAR = -36;
+const HILL_RISE = 6.2;
+
+/** Ground rises into the distance so the field climbs the hill. */
+function groundY(x: number, z: number): number {
+  const depth = (FIELD_NEAR - z) / (FIELD_NEAR - FIELD_FAR);
+  const t = Math.max(0, Math.min(1, depth));
+  const rise = t * t * HILL_RISE;
+  const roll = Math.sin(x * 0.14 + t * 1.2) * 0.22 * t;
+  return rise + roll;
+}
+
+/** Tall blades up close, short blades far away — matches perspective. */
+function bladeScale(z: number): number {
+  const depth = (FIELD_NEAR - z) / (FIELD_NEAR - FIELD_FAR);
+  const t = Math.max(0, Math.min(1, depth));
+  return 1.65 - t * 1.05;
+}
+
+function makeBladeGeometry() {
+  const positions: number[] = [];
+  const heightFactor: number[] = [];
+  const indices: number[] = [];
+
+  for (let i = 0; i <= BLADE_SEGMENTS; i++) {
+    const t = i / BLADE_SEGMENTS;
+    const y = t * BLADE_HEIGHT;
+    const w = BLADE_WIDTH * (1 - t * 0.9);
+    positions.push(-w, y, 0, w, y, 0);
+    heightFactor.push(t, t);
+  }
+  for (let i = 0; i < BLADE_SEGMENTS; i++) {
+    const a = i * 2;
+    indices.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+  }
+
+  const geo = new THREE.InstancedBufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute(
+    "heightFactor",
+    new THREE.Float32BufferAttribute(heightFactor, 1),
+  );
+  geo.setIndex(indices);
+
+  const offset = new Float32Array(BLADE_COUNT * 3);
+  const rot = new Float32Array(BLADE_COUNT);
+  const scaleH = new Float32Array(BLADE_COUNT);
+  const hash = new Float32Array(BLADE_COUNT);
+
+  for (let i = 0; i < BLADE_COUNT; i++) {
+    // Bias toward the camera so the foreground feels full and lush.
+    const zt = Math.random() * Math.random();
+    const z = FIELD_NEAR + (FIELD_FAR - FIELD_NEAR) * zt;
+    const depth = (FIELD_NEAR - z) / (FIELD_NEAR - FIELD_FAR);
+    const x = (Math.random() * 2 - 1) * FIELD_X * (0.55 + 0.45 * depth);
+    offset[i * 3] = x;
+    offset[i * 3 + 1] = groundY(x, z);
+    offset[i * 3 + 2] = z;
+    rot[i] = Math.random() * Math.PI * 2;
+    scaleH[i] = bladeScale(z) * (0.9 + Math.random() * 0.22);
+    hash[i] = Math.random();
+  }
+
+  geo.setAttribute("offset", new THREE.InstancedBufferAttribute(offset, 3));
+  geo.setAttribute("rot", new THREE.InstancedBufferAttribute(rot, 1));
+  geo.setAttribute("scaleH", new THREE.InstancedBufferAttribute(scaleH, 1));
+  geo.setAttribute("hash", new THREE.InstancedBufferAttribute(hash, 1));
+  geo.instanceCount = BLADE_COUNT;
+  return geo;
+}
+
+const VERT = /* glsl */ `
+  uniform float uTime;
+  uniform float uFogNear;
+  uniform float uFogFar;
+  uniform float uDissolve;
+  attribute float heightFactor;
+  attribute vec3 offset;
+  attribute float rot;
+  attribute float scaleH;
+  attribute float hash;
+  varying float vH;
+  varying float vHash;
+  varying float vFog;
+  varying float vDis;
+
+  void main(){
+    vH = heightFactor;
+    vHash = hash;
+
+    vec2 windDir = normalize(vec2(0.86, 0.5));
+
+    // --- Disintegration -----------------------------------------------------
+    // Every blade runs the same 0..1 curve, but starts at its own moment. The
+    // stagger is part random (hash) and part depth, so the field comes apart
+    // from the camera backwards instead of collapsing all at once. Max stagger
+    // (0.45) plus the window (0.55) lands exactly on uDissolve = 1.
+    float depth01 = clamp((offset.z + 36.0) / 40.5, 0.0, 1.0); // 0 far, 1 near
+    float stagger = hash * 0.30 + (1.0 - depth01) * 0.15;
+    float d = clamp((uDissolve - stagger) / 0.55, 0.0, 1.0);
+    d = d * d * (3.0 - 2.0 * d);
+    vDis = d;
+
+    vec3 pos = position;
+    // Only a light taper. The fragment shader eats the blade away from the base
+    // now, so it no longer needs to be crushed to a stub as well — doing both
+    // turned the near field into a row of hard little rectangles.
+    pos.y *= scaleH * (1.0 - 0.3 * d);
+    pos.x *= 1.0 - 0.2 * d;
+
+    // ...and tumbles gently while it lifts. A full turn and a half (the old
+    // range) is too fast to read at this scale and just looks like flicker.
+    float spin = rot + d * (1.0 + hash * 2.6);
+    float s = sin(spin), c = cos(spin);
+    pos = vec3(pos.x * c - pos.z * s, pos.y, pos.x * s + pos.z * c);
+
+    vec3 world = pos + offset;
+
+    float hh = heightFactor * heightFactor;
+    float sway = sin(uTime * 0.5 + offset.z * 0.05) * 0.5;
+    float gust = sin(offset.x * 0.08 + offset.z * 0.12 - uTime * 0.6) * 0.9;
+    float flutter = sin(uTime * 2.5 + hash * 6.2831) * 0.2;
+    float wind = sway + gust + flutter;
+    float bend = wind * 0.85 * hh * scaleH;
+    world.x += windDir.x * bend;
+    world.z += windDir.y * bend;
+
+    // Torn loose: carried up and downwind, with a little scatter so the cloud
+    // of blades has body rather than moving as one sheet. Eased on the way out
+    // (d²) so blades leave the ground gently and gather speed, instead of
+    // snapping upward the instant their turn comes.
+    float carryEase = d * d;
+    world.y += carryEase * (1.3 + hash * 2.8);
+    float carry = carryEase * (1.0 + hash * 2.4);
+    world.x += windDir.x * carry + sin(hash * 31.4) * carryEase * 1.2;
+    world.z += windDir.y * carry + cos(hash * 17.7) * carryEase * 1.2;
+
+    vec4 mv = modelViewMatrix * vec4(world, 1.0);
+    vFog = clamp((-mv.z - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const FRAG = /* glsl */ `
+  precision highp float;
+  uniform vec3 uBase;
+  uniform vec3 uTip;
+  uniform vec3 uFogColor;
+  uniform vec2 uResolution;
+  varying float vH;
+  varying float vHash;
+  varying float vFog;
+  varying float vDis;
+
+  float hash11(float p){
+    return fract(sin(p) * 43758.5453);
+  }
+
+  void main(){
+    vec3 col = mix(uBase, uTip, vH);
+    col *= 0.82 + vHash * 0.32;
+    col *= mix(0.55, 1.0, vH);
+
+    // Surface texture — clumpy grass noise like a rendered photo.
+    float coarse = hash11(vHash * 120.0 + floor(vH * 8.0)) * 0.5
+      + hash11(vHash * 310.0) * 0.5;
+    col *= 0.84 + coarse * 0.28;
+
+    // Fine per-pixel grain on the blades.
+    vec2 px = gl_FragCoord.xy;
+    float fine = hash11(dot(floor(px), vec2(12.9898, 78.233)));
+    col += (fine - 0.5) * 0.1;
+
+    col = mix(col, uFogColor, vFog);
+
+    // Eat each blade away from the base upward as it lifts.
+    //
+    // The obvious approach — threshold a per-pixel random number — is what this
+    // used to do, and it reads as television static: white noise has no spatial
+    // coherence, so the blade breaks into flickering speckle. Cutting along the
+    // blade's own height instead gives a clean edge that travels, and one
+    // random offset *per blade* keeps the field from dissolving in lockstep.
+    if (vDis > 0.001) {
+      float ragged = (hash11(vHash * 91.7) - 0.5) * 0.18;
+      if (vH < vDis * 1.15 + ragged) discard;
+      // What survives cools toward the night air on its way out.
+      col = mix(col, uFogColor, smoothstep(0.0, 1.0, vDis) * 0.7);
+    }
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+/** Seconds for the whole field to come apart once `dissolving` flips. Tuned
+ *  against the gate's cloud timings so the field is gone before the cover
+ *  closes — dissolving underneath an opaque wash is work nobody sees. */
+const DISSOLVE_SECONDS = 1.4;
+
+function Grass({ dissolving }: { dissolving: boolean }) {
+  const geo = useMemo(() => makeBladeGeometry(), []);
+  const mat = useRef<THREE.ShaderMaterial>(null);
+
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uFogNear: { value: 6 },
+      uFogFar: { value: 32 },
+      uBase: { value: new THREE.Color(0.05, 0.18, 0.07) },
+      uTip: { value: new THREE.Color(0.38, 0.66, 0.22) },
+      uFogColor: { value: new THREE.Color(0.04, 0.12, 0.09) },
+      uResolution: { value: new THREE.Vector2(1, 1) },
+      uDissolve: { value: 0 },
+    }),
+    [],
+  );
+
+  useFrame((state, delta) => {
+    if (!mat.current) return;
+    const u = mat.current.uniforms;
+    u.uTime.value = state.clock.elapsedTime;
+    u.uResolution.value.set(
+      state.size.width * state.viewport.dpr,
+      state.size.height * state.viewport.dpr,
+    );
+
+    // A fixed-rate ramp rather than an ease toward a target: the gate's other
+    // beats are scheduled against the clock, so this one has to finish when it
+    // says it will. `delta` is clamped because a background tab can hand back
+    // a huge first frame, which would snap the field apart in one step.
+    if (dissolving && u.uDissolve.value < 1) {
+      u.uDissolve.value = Math.min(
+        1,
+        u.uDissolve.value + Math.min(delta, 1 / 30) / DISSOLVE_SECONDS,
+      );
+    }
+  });
+
+  return (
+    <mesh geometry={geo} frustumCulled={false}>
+      <shaderMaterial
+        ref={mat}
+        vertexShader={VERT}
+        fragmentShader={FRAG}
+        uniforms={uniforms}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+function Rig() {
+  const { camera } = useThree();
+  useMemo(() => {
+    camera.position.set(0, 1.55, 9);
+    camera.lookAt(0, 3.2, -22);
+  }, [camera]);
+  return null;
+}
+
+export default function GrassField({
+  dissolving = false,
+}: {
+  /** Flip once, on the way out: the field tears loose and blows away. */
+  dissolving?: boolean;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[2]">
+      <Canvas
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 1.55, 9], fov: 44, near: 0.1, far: 120 }}
+      >
+        <Rig />
+        <ambientLight intensity={0.42} color="#9aacbf" />
+        <directionalLight position={[-4, 9, 3]} intensity={0.85} color="#c4d0e4" />
+        <Grass dissolving={dissolving} />
+      </Canvas>
+    </div>
+  );
+}
