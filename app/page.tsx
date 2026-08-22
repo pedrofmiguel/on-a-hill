@@ -3,6 +3,8 @@ import { PROJECTS } from "./data/projects";
 import Reveal from "./components/reveal/Reveal";
 import { CONTACT_EMAIL } from "./site";
 import WordField from "./components/site/WordField";
+import CloudField from "./components/site/CloudField";
+import HeroPortrait from "./components/site/HeroPortrait";
 import ProjectTable from "./components/site/ProjectTable";
 
 /* The headline is broken by hand, not by the browser. Line breaks are part of
@@ -18,11 +20,16 @@ export default function Home() {
           Hero. A poster: one enormous statement, with the useful links pushed
           out to the corners so the middle of the page can stay empty.
           ------------------------------------------------------------------ */}
-      <section className="relative flex min-h-[92svh] flex-col justify-between px-6 pb-12 pt-28 sm:px-10 sm:pt-32">
+      <section className="relative flex min-h-[92svh] flex-col overflow-hidden px-6 pb-12 pt-28 sm:px-10 sm:pt-32">
+        {/* The same weather as the entrance screen, turned down so type can
+            sit on it. */}
+        <CloudField intensity={0.55} />
+
+
         {/* Taken out of the flow so the headline gets the full measure — with
             "Say hi" as a flex sibling the last line wrapped on mid-size
             screens, which broke the hand-set four-line composition. */}
-        <Reveal delay={0.5} className="absolute right-6 top-28 hidden sm:block sm:right-10 sm:top-32">
+        <Reveal delay={0.5} className="absolute right-6 top-28 z-10 hidden sm:block sm:right-10 sm:top-32">
           <a
             href={`mailto:${CONTACT_EMAIL}`}
             className="label link-rule text-ink"
@@ -35,7 +42,7 @@ export default function Home() {
             the headline grow until the supporting row underneath was pushed
             off a 900px-tall screen — the poster only works if the whole thing
             is one view. The floor keeps the longest line unbroken at 360px. */}
-        <h1 className="display text-[clamp(1.25rem,min(10.4vw,13svh),8rem)] leading-[1.04]">
+        <h1 className="display relative z-10 text-[clamp(1.25rem,min(10.4vw,10.5svh),8rem)] leading-[1.04]">
           {HEADLINE.map((line, i) => (
             <Reveal
               key={line}
@@ -50,7 +57,16 @@ export default function Home() {
           ))}
         </h1>
 
-        <div className="mt-[min(4rem,6vh)] grid gap-8 sm:grid-cols-[minmax(0,22rem)_1fr_auto] sm:items-end sm:gap-12">
+        {/* The drawing gets the leftover vertical space and nothing else, so it
+            can never reach the headline above or the row below it. Sizing it
+            from that gap's height (rather than from viewport width) is what
+            fixes short, wide screens, where a width-based portrait grew into
+            the type. */}
+        <div className="relative min-h-[13svh] flex-1 sm:min-h-[17svh]">
+          <HeroPortrait className="pointer-events-none absolute bottom-0 right-[-3%] aspect-[520/404] h-full w-auto max-w-[64%] sm:right-[1%] sm:max-w-[46%] lg:h-[calc(100%+20vh)] lg:max-w-[34%]" />
+        </div>
+
+        <div className="relative z-10 mt-[min(4rem,6vh)] grid gap-8 sm:grid-cols-[minmax(0,22rem)_1fr_auto] sm:items-end sm:gap-12">
           <Reveal delay={0.55}>
             <p className="mono text-xs leading-[1.7] text-ink-2">
               Frontend developer and designer. I do the part you can see, and
