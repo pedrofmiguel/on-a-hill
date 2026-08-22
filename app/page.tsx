@@ -63,7 +63,7 @@ export default function Home() {
             fixes short, wide screens, where a width-based portrait grew into
             the type. */}
         <div className="relative min-h-[13svh] flex-1 sm:min-h-[17svh]">
-          <HeroPortrait className="pointer-events-none absolute bottom-0 right-[-3%] aspect-[520/404] h-full w-auto max-w-[64%] sm:right-[1%] sm:max-w-[46%] lg:h-[calc(100%+20vh)] lg:max-w-[34%]" />
+          <HeroPortrait className="pointer-events-none absolute bottom-0 right-[-3%] aspect-[827/578] h-full w-auto max-w-[64%] sm:right-[1%] sm:max-w-[46%] lg:h-[calc(100%+20vh)] lg:max-w-[34%]" />
         </div>
 
         <div className="relative z-10 mt-[min(4rem,6vh)] grid gap-8 sm:grid-cols-[minmax(0,22rem)_1fr_auto] sm:items-end sm:gap-12">
