@@ -1,19 +1,15 @@
 import Link from "next/link";
-import { PROJECTS } from "./data/projects";
 import Reveal from "./components/reveal/Reveal";
 import { CONTACT_EMAIL } from "./site";
 import WordField from "./components/site/WordField";
 import CloudField from "./components/site/CloudField";
 import HeroPortrait from "./components/site/HeroPortrait";
-import ProjectTable from "./components/site/ProjectTable";
 
 /* The headline is broken by hand, not by the browser. Line breaks are part of
    the composition here, so they are data rather than markup accidents. */
 const HEADLINE = ["I build", "websites", "that behave", "themselves"];
 
 export default function Home() {
-  const selected = PROJECTS.slice(0, 4);
-
   return (
     <div className="mx-auto max-w-[1600px]">
       {/* ------------------------------------------------------------------
@@ -99,24 +95,6 @@ export default function Home() {
       <Reveal delay={0.05} y={24}>
         <WordField />
       </Reveal>
-
-      {/* ------------------------------------------------------------------
-          Selected work, as an index.
-          ------------------------------------------------------------------ */}
-      <section className="px-6 pt-[14vh] sm:px-10">
-        <Reveal>
-          <div className="mb-8 flex items-baseline justify-between gap-6">
-            <h2 className="label text-ink-3">Selected work</h2>
-            <Link href="/projects" className="label link-rule text-ink">
-              All projects ↗
-            </Link>
-          </div>
-        </Reveal>
-
-        <Reveal delay={0.08} y={20}>
-          <ProjectTable projects={selected} />
-        </Reveal>
-      </section>
     </div>
   );
 }

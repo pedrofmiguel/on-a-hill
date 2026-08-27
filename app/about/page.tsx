@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Reveal from "../components/reveal/Reveal";
+import ScrollReveal from "../components/site/ScrollReveal";
+import Timeline from "../components/site/Timeline";
 
 export const metadata: Metadata = {
   title: "About",
@@ -73,6 +75,21 @@ export default function AboutPage() {
           </ul>
         </Reveal>
       </div>
+
+      {/* ------------------------------------------------------------------
+          Experience. Rows arrive on scroll rather than all at once, and each
+          opens its own write-up.
+          ------------------------------------------------------------------ */}
+      <section className="mt-[16vh] pb-[6vh]">
+        <ScrollReveal>
+          <div className="mb-8 flex items-baseline justify-between gap-6">
+            <h2 className="label text-ink-3">Experience</h2>
+            <p className="mono text-[11px] text-ink-3">Open one for the detail</p>
+          </div>
+        </ScrollReveal>
+
+        <Timeline />
+      </section>
     </div>
   );
 }
