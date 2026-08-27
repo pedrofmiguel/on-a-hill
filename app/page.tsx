@@ -34,7 +34,7 @@ export default function Home() {
             href={`mailto:${CONTACT_EMAIL}`}
             className="label link-rule text-ink"
           >
-            {CONTACT_EMAIL} ↗
+            Say hello ↗
           </a>
         </Reveal>
 

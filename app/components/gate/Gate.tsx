@@ -364,11 +364,13 @@ function GrassCopy({
         : { opacity: 0, y: base };
 
   return (
-    /* Anchored into the sky rather than centred on the screen. The horizon sits
-       around 40% down, so the copy lives above it and the grass below stays
-       clear — centring put the type across the hills, where it had to fight the
-       busiest part of the picture. */
-    <div className="absolute inset-x-0 top-[11%] z-10 flex flex-col items-center px-6 text-center sm:top-[9%]">
+    /* Anchored into the sky rather than centred on the screen — centred, the
+       type lay across the hills, the busiest part of the picture.
+       The skyline is the `far` hill from hills.ts: base 0.44, and across the
+       middle half of the screen its highest point is 45.4% down. That, not the
+       40% eyeballed earlier, is the real ceiling, and it leaves room to sit the
+       block properly inside the stars rather than pinned to the top edge. */
+    <div className="absolute inset-x-0 top-[16%] z-10 flex flex-col items-center px-6 text-center sm:top-[15%]">
       <motion.h2
         initial={{ opacity: 0, y: 18 }}
         animate={state(18)}
@@ -401,7 +403,7 @@ function GrassCopy({
         whileTap={leaving ? undefined : { y: 0 }}
         /* The site's own sticker, inverted for the night. The blurred glass pill
            this replaces belonged to no other part of the design. */
-        className="sticker sticker-solid sticker-lg mt-[6vh]"
+        className="sticker sticker-solid sticker-lg mt-[5vh]"
       >
         Enter ↓
       </motion.button>

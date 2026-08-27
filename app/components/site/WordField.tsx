@@ -11,8 +11,14 @@ import {
 type Word = { t: string; bright?: boolean };
 
 /**
- * The capability field: the disciplines, set enormous and mostly dimmed, with a
- * few words pulled up to full ink so the eye has somewhere to land.
+ * The capability field: the tools and disciplines, set large and mostly dimmed,
+ * with a few pulled up to full ink so the eye has somewhere to land.
+ *
+ * There are ~38 entries here rather than the dozen this started with, so the
+ * words are smaller and the rows more numerous — it reads as a dense field of
+ * texture rather than a handful of poster words. Bright entries are placed
+ * early in their row on purpose: rows deliberately run off the right edge, and
+ * a highlight that lands in the cropped tail is a highlight nobody sees.
  *
  * Two knobs per row:
  *   `indent` — a resting offset in vw, so the rows don't stack on one hard left
@@ -28,44 +34,53 @@ type Word = { t: string; bright?: boolean };
 const ROWS: { indent: number; drift: number; words: Word[] }[] = [
   {
     indent: 0,
-    drift: 130,
-    words: [{ t: "Interface Design" }, { t: "·" }, { t: "Motion", bright: true }],
+    drift: 70,
+    words: [{ t: "JavaScript" }, { t: "·" }, { t: "TypeScript", bright: true }, { t: "·" }, { t: "React" }],
   },
   {
-    indent: 5,
+    indent: 3,
     drift: 40,
-    words: [
-      { t: "Design Systems" },
-      { t: "·" },
-      { t: "WebGL" },
-      { t: "·" },
-      { t: "Prototyping" },
-    ],
+    words: [{ t: "Vue" }, { t: "·" }, { t: "Angular" }, { t: "·" }, { t: "Interface Design", bright: true }],
   },
   {
-    indent: 1,
+    indent: 0,
     drift: 90,
-    words: [
-      { t: "Art Direction", bright: true },
-      { t: "·" },
-      { t: "Creative Development" },
-    ],
-  },
-  {
-    indent: 7,
-    drift: 150,
-    words: [{ t: "Typography" }, { t: "·" }, { t: "Micro-interactions" }],
+    words: [{ t: "HTML" }, { t: "·" }, { t: "CSS" }, { t: "·" }, { t: "Sass" }, { t: "·" }, { t: "Styled Components" }],
   },
   {
     indent: 2,
-    drift: 60,
-    words: [
-      { t: "E-Commerce", bright: true },
-      { t: "·" },
-      { t: "Shaders" },
-      { t: "·" },
-      { t: "3D" },
-    ],
+    drift: 55,
+    words: [{ t: "Node.js", bright: true }, { t: "·" }, { t: "NestJS" }, { t: "·" }, { t: "PHP" }, { t: "·" }, { t: "Ruby on Rails" }],
+  },
+  {
+    indent: 0,
+    drift: 80,
+    words: [{ t: "Design Systems", bright: true }, { t: "·" }, { t: "Micro-interactions" }],
+  },
+  {
+    indent: 4,
+    drift: 35,
+    words: [{ t: "MySQL" }, { t: "·" }, { t: "MongoDB" }, { t: "·" }, { t: "Redux" }, { t: "·" }, { t: "Jest" }],
+  },
+  {
+    indent: 1,
+    drift: 65,
+    words: [{ t: "Docker" }, { t: "·" }, { t: "AWS", bright: true }, { t: "·" }, { t: "Terraform" }, { t: "·" }, { t: "Jenkins" }],
+  },
+  {
+    indent: 0,
+    drift: 95,
+    words: [{ t: "Git" }, { t: "·" }, { t: "GitHub Actions" }, { t: "·" }, { t: "Webpack" }, { t: "·" }, { t: "WordPress" }],
+  },
+  {
+    indent: 3,
+    drift: 45,
+    words: [{ t: "Figma" }, { t: "·" }, { t: "Prototyping" }, { t: "·" }, { t: "Motion", bright: true }, { t: "·" }, { t: "WebGL" }, { t: "·" }, { t: "3D" }],
+  },
+  {
+    indent: 0,
+    drift: 75,
+    words: [{ t: "Accessibility", bright: true }, { t: "·" }, { t: "Agile" }, { t: "·" }, { t: "Jira" }, { t: "·" }, { t: "E-Commerce" }, { t: "·" }, { t: "Creative Development" }],
   },
 ];
 
@@ -130,8 +145,10 @@ export default function WordField() {
         </p>
       ))}
 
-      {/* A whisper, for anyone who leans in. */}
-      <p className="mono pointer-events-none absolute left-[34%] top-[46%] z-10 hidden max-w-[8rem] text-[9px] leading-[1.4] text-ink-3 md:block">
+      {/* A whisper, for anyone who leans in. Parked in the clear space below the
+          rows: at its old mid-field position it landed on top of a word once the
+          field grew from five rows to ten, and read as a mistake. */}
+      <p className="mono pointer-events-none absolute bottom-[6%] right-[8%] z-10 hidden max-w-[9rem] text-right text-[9px] leading-[1.4] text-ink-3 md:block">
         a dot lived here once
       </p>
     </section>

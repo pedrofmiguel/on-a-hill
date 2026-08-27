@@ -82,10 +82,13 @@ body {
 }
 
 /* One word in the capability field. inline-block because the per-word float is
-   a transform, and transforms do not apply to inline boxes. */
+   a transform, and transforms do not apply to inline boxes.
+   Sized down from the original 5vw/5rem: the field holds ~38 entries across ten
+   rows now rather than a dozen across five, and at poster size that is a wall
+   rather than a texture. */
 .display-word {
   display: inline-block;
-  font-size: clamp(1.5rem, 5vw, 5rem);
+  font-size: clamp(1.1rem, 5.5vw, 2.75rem);
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1.15;
