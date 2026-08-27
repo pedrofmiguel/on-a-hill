@@ -59,6 +59,50 @@ vec3 starColor(float n){
   return mix(vec3(0.82, 0.86, 1.0), vec3(1.0, 0.94, 0.82), step(0.72, n));
 }
 
+float segDist(vec2 p, vec2 a, vec2 b){
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+  return length(pa - ba * h);
+}
+
+// A falling star. Time is cut into period-long cycles; a streak crosses the
+// sky during the first ~1.1s of a cycle and most cycles are skipped outright,
+// so they stay a surprise rather than a metronome. The skip roll uses its own
+// hash — reusing the direction's would tie *whether* a star falls to *where*
+// it falls, and the same few trajectories would be the only ones ever seen.
+float meteor(vec2 p, float aspect, float t, float seed, float period){
+  float cycle = t / period + seed;
+  float idx = floor(cycle);
+  float secs = fract(cycle) * period;
+
+  const float dur = 1.1;
+  if (secs > dur) return 0.0;
+
+  float appear = hash21(vec2(idx * 5.3 + 1.7, seed * 19.1));
+  if (appear < 0.6) return 0.0;
+
+  float k = secs / dur;
+  float r1 = hash21(vec2(idx, seed * 31.7));
+  float r2 = hash21(vec2(idx * 1.7 + 3.1, seed * 12.3));
+  float r3 = hash21(vec2(idx * 2.9 + 7.3, seed * 5.9));
+
+  vec2 start = vec2(mix(-0.05, 1.05, r1), mix(-0.04, 0.20, r2));
+  vec2 dir = normalize(vec2(mix(-0.8, 0.8, r3), 0.55));
+
+  vec2 head = start + dir * 0.52 * k;
+  // The tail grows as it accelerates in, then is swallowed on the way out.
+  float tailLen = 0.15 * smoothstep(0.0, 0.25, k) * (1.0 - smoothstep(0.7, 1.0, k));
+  vec2 tail = head - dir * tailLen;
+
+  vec2 q = p * vec2(aspect, 1.0);
+  float dist = segDist(q, head * vec2(aspect, 1.0), tail * vec2(aspect, 1.0));
+  float core = smoothstep(0.0026, 0.0, dist);
+  float glow = smoothstep(0.014, 0.0, dist) * 0.3;
+  float fade = smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.72, 1.0, k));
+  return (core + glow) * fade;
+}
+
 // Photo-like surface grain — coarse clumps + fine speckle.
 vec3 surfaceNoise(vec2 screenPx, vec3 col, float strength){
   float coarse = fbm(screenPx * 0.004);
@@ -88,16 +132,30 @@ void main(){
   // ---- STARS (drawn before hills so they stay visible in open sky) ----
   float cFarEarly = hill_far(p.x);
   float skyMask = smoothstep(cFarEarly - 0.06, 0.02, p.y);
-  float dust = starLayer(p, 95.0, 0.955, 0.0024);
-  float medium = starLayer(p, 72.0, 0.978, 0.0042);
-  float bright = starLayer(p, 52.0, 0.992, 0.007);
+  // sizeBase is in CELL units, not screen units — a cell is 1/density of the
+  // viewport height. The values here were originally ~0.003, which at density
+  // 95 is a core radius of about 0.03 PIXELS: the sky read as empty not because
+  // the stars were dim but because they were sub-pixel and only lit up when a
+  // pixel centre happened to land on one. These give cores of roughly 0.5px,
+  // 1.2px and 3px.
+  float dust = starLayer(p, 95.0, 0.940, 0.055);
+  float medium = starLayer(p, 72.0, 0.970, 0.10);
+  float bright = starLayer(p, 52.0, 0.987, 0.17);
   float nBright = hash21(floor(p * vec2(u_res.x / u_res.y * 52.0, 52.0)));
   float tw = 0.6 + 0.4 * sin(u_time * 1.05 + nBright * 47.0);
   vec3 starCol =
-    vec3(0.62, 0.65, 0.82) * dust * 0.85 +
-    starColor(hash21(floor(p * vec2(u_res.x / u_res.y * 72.0, 72.0)))) * medium * 1.15 +
-    starColor(nBright) * bright * tw * 1.5;
+    vec3(0.66, 0.70, 0.88) * dust * 0.9 +
+    starColor(hash21(floor(p * vec2(u_res.x / u_res.y * 72.0, 72.0)))) * medium * 1.2 +
+    starColor(nBright) * bright * tw * 1.6;
   col += starCol * skyMask;
+
+  // Two independent streams on different clocks, so they never pair up.
+  float shooting =
+    meteor(p, aspect, u_time, 0.13, 9.0) +
+    meteor(p, aspect, u_time, 0.67, 14.0);
+  // 2.2 rather than 1.0: at unit brightness the streak was there but too faint
+  // to notice against the star field, and at 6.0 it read as a laser.
+  col += vec3(0.96, 0.97, 1.0) * shooting * 3.0 * skyMask;
   col = surfaceNoise(p * u_res, col, 0.06);
 
   // ---- ROLLING HILLS (back → front) ----

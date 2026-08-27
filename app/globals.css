@@ -140,6 +140,26 @@ button.sticker:hover {
   color: var(--color-paper);
 }
 
+/* Inverted, for the entrance sky — a paper chip on the night reads as the one
+   thing to press without needing a border, a blur or a shadow to say so.
+   Declared after `.sticker` so it wins on equal specificity. */
+.sticker-solid {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+button.sticker-solid:hover,
+a.sticker-solid:hover {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+/* The one place a sticker is the primary action rather than a repeated tag. */
+.sticker-lg {
+  padding: 0.85rem 1.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+}
+
 /* An underline that draws itself, rather than a colour swap. */
 .link-rule {
   position: relative;

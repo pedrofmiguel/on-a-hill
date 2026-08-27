@@ -1,10 +1,5 @@
 import Reveal from "../reveal/Reveal";
-import { CONTACT_EMAIL as EMAIL } from "../../site";
-
-const ELSEWHERE = [
-  { label: "GitHub", href: "https://github.com/" },
-  { label: "LinkedIn", href: "https://www.linkedin.com/" },
-];
+import { CONTACT_EMAIL as EMAIL, SOCIALS } from "../../site";
 
 // The last thing on every page is the one thing worth doing: writing to him.
 // So the address is the largest type in the footer, and everything else is set
@@ -26,7 +21,7 @@ export default function Footer() {
         <p className="label text-ink-3">© 2026 — On a hill</p>
 
         <ul className="flex flex-wrap gap-2">
-          {ELSEWHERE.map((l) => (
+          {SOCIALS.map((l) => (
             <li key={l.label}>
               <a
                 className="sticker"

@@ -364,7 +364,11 @@ function GrassCopy({
         : { opacity: 0, y: base };
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
+    /* Anchored into the sky rather than centred on the screen. The horizon sits
+       around 40% down, so the copy lives above it and the grass below stays
+       clear — centring put the type across the hills, where it had to fight the
+       busiest part of the picture. */
+    <div className="absolute inset-x-0 top-[11%] z-10 flex flex-col items-center px-6 text-center sm:top-[9%]">
       <motion.h2
         initial={{ opacity: 0, y: 18 }}
         animate={state(18)}
@@ -373,7 +377,10 @@ function GrassCopy({
           ease: leaving ? "easeIn" : EASE,
           delay: leaving ? 0 : active && !reduced ? 0.4 : 0,
         }}
-        className="display-soft max-w-2xl text-base text-white sm:text-lg md:text-xl"
+        /* 5.2vw is measured, not chosen: the longest line is 19 characters and
+           Martian Mono runs ~0.86em per character, so anything wider overflows
+           a 390px screen. */
+        className="display text-[clamp(0.9rem,5.2vw,5rem)] text-paper"
       >
         take a breath,
         <br />
@@ -392,9 +399,11 @@ function GrassCopy({
         }}
         whileHover={leaving ? undefined : { y: -2 }}
         whileTap={leaving ? undefined : { y: 0 }}
-        className="label mt-10 rounded-full border border-white/25 bg-white/10 px-8 py-3 text-white backdrop-blur-md transition-colors hover:border-white/50 hover:bg-white/20"
+        /* The site's own sticker, inverted for the night. The blurred glass pill
+           this replaces belonged to no other part of the design. */
+        className="sticker sticker-solid sticker-lg mt-[6vh]"
       >
-        Enter
+        Enter ↓
       </motion.button>
     </div>
   );
