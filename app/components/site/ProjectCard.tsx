@@ -19,7 +19,10 @@ export default function ProjectCard({ project }: { project: Project }) {
     <motion.div
       whileHover={reduced ? undefined : { y: -8 }}
       transition={{ type: "spring", stiffness: 300, damping: 26 }}
-      className="w-[80vw] max-w-[440px] shrink-0 snap-center sm:w-[440px]"
+      /* `data-card` is how the rail finds its cards to measure; snap is gone
+         because CSS snapping cannot coexist with the rail's own physics. */
+      data-card
+      className="w-[80vw] max-w-[440px] shrink-0 sm:w-[440px]"
     >
       <Link
         href={`/projects/${project.slug}`}

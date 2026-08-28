@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Reveal from "../components/reveal/Reveal";
 import ScrollReveal from "../components/site/ScrollReveal";
 import Timeline from "../components/site/Timeline";
+import HeroPortrait from "../components/site/HeroPortrait";
 
 export const metadata: Metadata = {
   title: "About",
@@ -22,15 +23,26 @@ const STACK = [
 export default function AboutPage() {
   return (
     <div className="mx-auto max-w-[1600px] px-6 pt-32 sm:px-10 sm:pt-40">
-      <Reveal>
-        <p className="label text-ink-3">About</p>
-      </Reveal>
+      {/* Title and drawing share a row, as on the home page. A grid rather than
+          absolute positioning: the headline column is bounded, so the two can
+          never grow into each other whatever the viewport. */}
+      <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-16">
+        <div>
+          <Reveal>
+            <p className="label text-ink-3">About</p>
+          </Reveal>
 
-      <Reveal delay={0.08} y={22} duration={1}>
-        <h1 className="display mt-6 max-w-[20ch] text-[clamp(1.15rem,5.4vw,4.5rem)] leading-[1.08]">
-          Drawn to the quiet details
-        </h1>
-      </Reveal>
+          <Reveal delay={0.08} y={22} duration={1}>
+            <h1 className="display mt-6 max-w-[20ch] text-[clamp(1.15rem,5.4vw,4.5rem)] leading-[1.08]">
+              Drawn to the quiet details
+            </h1>
+          </Reveal>
+        </div>
+
+        <Reveal delay={0.24} y={26} className="md:justify-self-end">
+          <HeroPortrait className="aspect-[827/578] w-[68%] max-w-[420px] md:w-[30vw] md:max-w-[400px]" />
+        </Reveal>
+      </div>
 
       {/* Prose sits in a narrow measure against the wide headline above it —
           the contrast in column width is doing as much work as the type size. */}

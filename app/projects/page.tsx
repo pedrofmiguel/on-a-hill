@@ -25,7 +25,8 @@ export default function ProjectsPage() {
 
         <Reveal delay={0.16}>
           <p className="mono mt-8 max-w-[46ch] text-xs leading-[1.7] text-ink-2">
-            Drag them around. Open one if you want the details.
+            Drag it, scroll it, or use the arrow keys. Open one if you want
+            the details.
           </p>
         </Reveal>
       </header>
