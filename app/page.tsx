@@ -1,9 +1,7 @@
 import Link from "next/link";
 import Reveal from "./components/reveal/Reveal";
-import { CONTACT_EMAIL } from "./site";
-import WordField from "./components/site/WordField";
 import CloudField from "./components/site/CloudField";
-import HeroPortrait from "./components/site/HeroPortrait";
+import SoundtrackPortrait from "./components/site/SoundtrackPortrait";
 
 /* The headline is broken by hand, not by the browser. Line breaks are part of
    the composition here, so they are data rather than markup accidents. */
@@ -22,23 +20,17 @@ export default function Home() {
         <CloudField intensity={0.55} />
 
 
-        {/* Taken out of the flow so the headline gets the full measure — with
-            "Say hi" as a flex sibling the last line wrapped on mid-size
-            screens, which broke the hand-set four-line composition. */}
-        <Reveal delay={0.5} className="absolute right-6 top-28 z-10 hidden sm:block sm:right-10 sm:top-32">
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="label link-rule text-ink"
-          >
-            Say hello ↗
-          </a>
-        </Reveal>
-
         {/* Sized against viewport *height* as well as width. Width alone let
             the headline grow until the supporting row underneath was pushed
             off a 900px-tall screen — the poster only works if the whole thing
             is one view. The floor keeps the longest line unbroken at 360px. */}
-        <h1 className="display relative z-10 text-[clamp(1.25rem,min(10.4vw,10.5svh),8rem)] leading-[1.04]">
+        {/* `pointer-events-none` is load-bearing, not tidying. Each line is a
+            block-level span, so its box runs the full width of the section even
+            where the type does not — and at z-10 those empty boxes sat on top of
+            the drawing's whole upper half. The soundtrack hover simply did not
+            exist over the head, the headphones or the face. Nothing in a poster
+            headline is clickable, so it has no business hit-testing. */}
+        <h1 className="display pointer-events-none relative z-10 text-[clamp(1.25rem,min(10.4vw,10.5svh),8rem)] leading-[1.04]">
           {HEADLINE.map((line, i) => (
             <Reveal
               key={line}
@@ -59,15 +51,14 @@ export default function Home() {
             fixes short, wide screens, where a width-based portrait grew into
             the type. */}
         <div className="relative min-h-[13svh] flex-1 sm:min-h-[17svh]">
-          <HeroPortrait className="pointer-events-none absolute bottom-0 right-[-3%] aspect-[827/578] h-full w-auto max-w-[64%] sm:right-[1%] sm:max-w-[46%] lg:h-[calc(100%+20vh)] lg:max-w-[34%]" />
+          <SoundtrackPortrait className="absolute bottom-0 right-[-3%] aspect-[827/578] h-full w-auto max-w-[64%] sm:right-[1%] sm:max-w-[46%] lg:h-[calc(100%+20vh)] lg:max-w-[34%]" />
         </div>
 
         <div className="relative z-10 mt-[min(4rem,6vh)] grid gap-8 sm:grid-cols-[minmax(0,22rem)_1fr_auto] sm:items-end sm:gap-12">
           <Reveal delay={0.55}>
             <p className="mono text-xs leading-[1.7] text-ink-2">
-              Frontend developer and designer. I do the part you can see, and
-              most of the part you can&apos;t. Occasionally something with no
-              reason to exist.
+              Fullstack developer and builder. I have a passion for building
+              tools for my day-to-day, and products with real purpose.
             </p>
           </Reveal>
 
@@ -90,11 +81,6 @@ export default function Home() {
           </Reveal>
         </div>
       </section>
-
-      {/* The capability field — big, dim, drifting. */}
-      <Reveal delay={0.05} y={24}>
-        <WordField />
-      </Reveal>
     </div>
   );
 }

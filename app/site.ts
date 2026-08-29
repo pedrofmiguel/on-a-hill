@@ -45,6 +45,14 @@ export const SITE_URL = resolveSiteUrl();
  */
 export const CONTACT_EMAIL = "pmferreiradev@gmail.com";
 
+/**
+ * The soundtrack he builds to. Hung off the hero drawing (the one wearing the
+ * headphones) rather than listed as a link, because it is an aside about the
+ * person, not a way to contact him.
+ */
+export const SPOTIFY_URL =
+  "https://open.spotify.com/user/obarrier?si=9bd567fa03d842d5";
+
 /** Where to find him. Used by the footer and the full-screen menu. */
 export const SOCIALS = [
   { label: "GitHub", href: "https://github.com/pedrofmiguel" },

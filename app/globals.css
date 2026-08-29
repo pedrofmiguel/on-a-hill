@@ -81,19 +81,6 @@ body {
   text-wrap: pretty;
 }
 
-/* One word in the capability field. inline-block because the per-word float is
-   a transform, and transforms do not apply to inline boxes.
-   Sized down from the original 5vw/5rem: the field holds ~38 entries across ten
-   rows now rather than a dozen across five, and at poster size that is a wall
-   rather than a texture. */
-.display-word {
-  display: inline-block;
-  font-size: clamp(1.1rem, 5.5vw, 2.75rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-}
-
 /* The tiny uppercase meta labels that sit above sections. Tracking is far
    lower than it was under the proportional face — letter-spacing a wide mono at
    0.2em pushes a three-word label across half the screen. */
@@ -240,21 +227,6 @@ html.lenis {
     }
     to {
       transform: translate3d(var(--toX, 4%), var(--toY, -2%), 0) scale(1.08);
-    }
-  }
-
-  /* Individual words in the capability field breathe on their own clock, so
-     the block never reads as one rigid slab sliding past. */
-  .word-float {
-    animation: wordFloat var(--float-dur, 14s) ease-in-out infinite alternate;
-    animation-delay: var(--float-delay, 0s);
-  }
-  @keyframes wordFloat {
-    from {
-      transform: translate3d(0, var(--float-from, 0.18em), 0);
-    }
-    to {
-      transform: translate3d(0, var(--float-to, -0.18em), 0);
     }
   }
 }
