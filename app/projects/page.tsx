@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ProjectCarousel from "../components/site/ProjectCarousel";
+import ProjectDrawer from "../components/site/ProjectDrawer";
 import Reveal from "../components/reveal/Reveal";
 import { PROJECTS } from "../data/projects";
 
@@ -25,13 +25,13 @@ export default function ProjectsPage() {
 
         <Reveal delay={0.16}>
           <p className="mono mt-8 max-w-[46ch] text-xs leading-[1.7] text-ink-2">
-            Drag them around. Open one if you want the details.
+            Pull one out for the details.
           </p>
         </Reveal>
       </header>
 
       <Reveal delay={0.22} y={24} className="mt-[10vh]">
-        <ProjectCarousel projects={PROJECTS} />
+        <ProjectDrawer projects={PROJECTS} />
       </Reveal>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { setScrollLocked } from "./SmoothScroll";
@@ -14,6 +15,14 @@ export default function Modal({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(true);
+
+  /* Portalled to <body> for the same reason as the experience dialog: this
+     renders inside <main>, which is `relative z-10` and therefore its own
+     stacking context, so a z-index set here could never rise above the site
+     header at z-90 and the wordmark painted across the panel. */
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -29,10 +38,10 @@ export default function Modal({ children }: { children: React.ReactNode }) {
     };
   }, [close]);
 
-  return (
+  const content = (
     <AnimatePresence onExitComplete={() => router.back()}>
       {open && (
-        <div className="fixed inset-0 z-[70]">
+        <div className="fixed inset-0 z-[100]">
           <motion.div
             aria-hidden
             onClick={close}
@@ -81,4 +90,6 @@ export default function Modal({ children }: { children: React.ReactNode }) {
       )}
     </AnimatePresence>
   );
+
+  return mounted ? createPortal(content, document.body) : null;
 }

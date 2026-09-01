@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -86,6 +86,8 @@ const VERT = /* glsl */ `
   uniform float uFogNear;
   uniform float uFogFar;
   uniform float uDissolve;
+  uniform vec2 uPointer;
+  uniform float uAspect;
   attribute float heightFactor;
   attribute vec3 offset;
   attribute float rot;
@@ -146,6 +148,25 @@ const VERT = /* glsl */ `
     float carry = carryEase * (1.0 + hash * 2.4);
     world.x += windDir.x * carry + sin(hash * 31.4) * carryEase * 1.2;
     world.z += windDir.y * carry + cos(hash * 17.7) * carryEase * 1.2;
+
+    // --- Pointer wake ------------------------------------------------------
+    // The cursor shoulders blades aside. Influence is measured in screen space
+    // from each blade's *root*, which costs one extra projection: displacing
+    // first and projecting afterwards would let a blade chase its own wake and
+    // run away across the field.
+    vec4 rootClip = projectionMatrix * modelViewMatrix * vec4(offset, 1.0);
+    vec2 rootNdc = rootClip.xy / max(abs(rootClip.w), 0.0001);
+    vec2 fromPointer = (rootNdc - uPointer) * vec2(uAspect, 1.0);
+    float pd = length(fromPointer);
+    // hh weights the bend toward the tip, so blades pivot from the ground
+    // rather than sliding sideways as rigid sticks.
+    float push = smoothstep(0.62, 0.0, pd) * hh * scaleH * (1.0 - d);
+    vec2 away = fromPointer / max(pd, 0.0001);
+    world.x += away.x * push * 0.6;
+    world.z -= away.y * push * 0.3;
+    // Barely any downward press. At 0.1 it dug a visible crater with bare
+    // ground at the bottom; the blades should lean, not be stamped flat.
+    world.y -= push * 0.035;
 
     vec4 mv = modelViewMatrix * vec4(world, 1.0);
     vFog = clamp((-mv.z - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
@@ -212,6 +233,28 @@ function Grass({ dissolving }: { dissolving: boolean }) {
   const geo = useMemo(() => makeBladeGeometry(), []);
   const mat = useRef<THREE.ShaderMaterial>(null);
 
+  // Where the pointer is (`to`) versus where the wake has caught up to (`at`).
+  // Tracked on window rather than through R3F's pointer, because the canvas
+  // sits under `pointer-events-none` and never receives the events itself.
+  const wake = useRef({ atX: 0, atY: -3, toX: 0, toY: -3, seen: false });
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const w = wake.current;
+      w.toX = (e.clientX / window.innerWidth) * 2 - 1;
+      w.toY = -((e.clientY / window.innerHeight) * 2 - 1);
+      if (!w.seen) {
+        // Start the wake under the pointer instead of dragging it in from the
+        // parked position, which would sweep the whole field on first move.
+        w.seen = true;
+        w.atX = w.toX;
+        w.atY = w.toY;
+      }
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
+
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
@@ -222,6 +265,9 @@ function Grass({ dissolving }: { dissolving: boolean }) {
       uFogColor: { value: new THREE.Color(0.04, 0.12, 0.09) },
       uResolution: { value: new THREE.Vector2(1, 1) },
       uDissolve: { value: 0 },
+      // Parked off-screen so the field sits still until the pointer arrives.
+      uPointer: { value: new THREE.Vector2(0, -3) },
+      uAspect: { value: 1 },
     }),
     [],
   );
@@ -234,6 +280,15 @@ function Grass({ dissolving }: { dissolving: boolean }) {
       state.size.width * state.viewport.dpr,
       state.size.height * state.viewport.dpr,
     );
+    u.uAspect.value = state.size.width / Math.max(state.size.height, 1);
+
+    // The wake trails the cursor. Frame-rate independent, so it settles at the
+    // same speed on 60Hz and 144Hz.
+    const w = wake.current;
+    const k = 1 - Math.pow(0.0001, Math.min(delta, 1 / 30));
+    w.atX += (w.toX - w.atX) * k;
+    w.atY += (w.toY - w.atY) * k;
+    u.uPointer.value.set(w.atX, w.atY);
 
     // A fixed-rate ramp rather than an ease toward a target: the gate's other
     // beats are scheduled against the clock, so this one has to finish when it

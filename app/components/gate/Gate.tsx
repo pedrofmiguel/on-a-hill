@@ -4,13 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Scene from "../Scene";
-import Intro from "./Intro";
 import { reveal } from "../reveal/store";
 import { setScrollLocked } from "../site/SmoothScroll";
 
 const KEY = "gate:entered";
 
-type Phase = "intro" | "grass" | "leaving" | "done";
+type Phase = "grass" | "leaving" | "done";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -65,14 +64,20 @@ const CLOUD_EASE = [
 
 /**
  * The entrance experience, shown once per browser session:
- *   intro (white + clouds) → grass (starry night) → Enter → the site.
+ *   grass (starry night) → Enter → the site.
  *
- * The grass scene is the opaque floor of the overlay and mounts immediately
- * (warming up its WebGL under the intro). The white intro simply fades out on
- * top of it, so there is always one fully-opaque layer and the site behind is
- * never visible until the hand-off. The real page still renders underneath for
- * SEO; a pre-paint script hides this overlay for returning visitors, and the
- * effect below unmounts it so its WebGL never initializes.
+ * There used to be a white "thanks for coming" card in front of this for four
+ * seconds. It said the same thing twice and made the visitor wait to be let
+ * into the part worth seeing, so the greeting moved onto the hill and the card
+ * is gone.
+ *
+ * The grass scene is the opaque floor of the overlay and mounts immediately.
+ * Its container paints `bg-night` before any WebGL initializes, so there is
+ * always one fully-opaque layer and the site behind is never visible until the
+ * hand-off — the hills and blades simply arrive into an already-dark sky. The
+ * real page still renders underneath for SEO; a pre-paint script hides this
+ * overlay for returning visitors, and the effect below unmounts it so its WebGL
+ * never initializes.
  */
 export default function Gate() {
   const pathname = usePathname();
@@ -82,7 +87,7 @@ export default function Gate() {
 
   // Deterministic initial state so SSR and first client render match; the
   // effect immediately corrects it for returning visitors.
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>("grass");
   const [mounted, setMounted] = useState(true);
   // Separate from `phase` because the field starts coming apart a beat *after*
   // the click, once the copy is already on its way out.
@@ -115,13 +120,11 @@ export default function Gate() {
 
     document.body.style.overflow = "hidden";
     setScrollLocked(true);
-    const t = setTimeout(() => setPhase("grass"), reduced ? 1400 : 4000);
     return () => {
-      clearTimeout(t);
       document.body.style.overflow = "";
       setScrollLocked(false);
     };
-  }, [isHome, reduced]);
+  }, [isHome]);
 
   // Hand the page back the moment the exit begins, so it can be scrolled while
   // the cloud is still clearing. Releasing the lock is a consequence of the
@@ -219,30 +222,11 @@ export default function Gate() {
             </div>
           )}
 
-          <GrassCopy
-            active={phase === "grass"}
-            leaving={leaving}
-            reduced={!!reduced}
-            onEnter={enter}
-          />
+          <GrassCopy leaving={leaving} reduced={!!reduced} onEnter={enter} />
 
           {/* Cloud cover: rolls in over the emptying hill, holds long enough to
               hide the night leaving, then thins out over the live site. */}
           <CloudCover active={leaving} reduced={!!reduced} />
-
-          {/* White greeting, on top, fades away to reveal the grass beneath. */}
-          <AnimatePresence>
-            {phase === "intro" && (
-              <motion.div
-                key="intro"
-                className="absolute inset-0 z-20"
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.2, ease: "easeInOut" }}
-              >
-                <Intro />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>
@@ -343,58 +327,76 @@ function CloudCover({ active, reduced }: { active: boolean; reduced: boolean }) 
 }
 
 function GrassCopy({
-  active,
   leaving,
   reduced,
   onEnter,
 }: {
-  active: boolean;
   leaving: boolean;
   reduced: boolean;
   onEnter: () => void;
 }) {
-  // Three states, not two: waiting below, present, and gone *upward*. Letting
+  // Two states now the white card is gone: present, and gone *upward*. Letting
   // the copy leave the way it arrived would rewind the entrance instead of
   // continuing it — beat 1 has to feel like departure.
-  const state = (base: number) =>
-    leaving
-      ? { opacity: 0, y: reduced ? 0 : -18 }
-      : active
-        ? { opacity: 1, y: 0 }
-        : { opacity: 0, y: base };
+  const state = leaving
+    ? { opacity: 0, y: reduced ? 0 : -18 }
+    : { opacity: 1, y: 0 };
 
   return (
+    /* Centred on the screen, as asked. Worth knowing what that costs: the type
+       now crosses the hills rather than sitting in clear sky above them, which
+       is why the block carries its own soft scrim below. Without it the lighter
+       hill ridges cut through the middle of the line. */
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-1/2 h-[46vh] -translate-y-1/2"
+        style={{
+          background:
+            "radial-gradient(60% 50% at 50% 50%, oklch(0.14 0.045 264 / 0.72) 0%, transparent 72%)",
+        }}
+      />
+
       <motion.h2
         initial={{ opacity: 0, y: 18 }}
-        animate={state(18)}
+        animate={state}
         transition={{
           duration: leaving ? EXIT.copyOut : 1.1,
           ease: leaving ? "easeIn" : EASE,
-          delay: leaving ? 0 : active && !reduced ? 0.4 : 0,
+          // A beat longer than the old 0.4s: this is now the first thing on
+          // screen, and the night needs a moment to establish before it is
+          // written on.
+          delay: leaving ? 0 : reduced ? 0 : 0.7,
         }}
-        className="display-soft max-w-2xl text-base text-white sm:text-lg md:text-xl"
+        /* 5.2vw is measured, not chosen: the longest line is 20 characters and
+           Martian Mono runs ~0.86em per character, so anything wider overflows
+           a 390px screen. The line break is hand-placed for the same reason —
+           set as one 33-character line it would have to drop to ~3.5vw and stop
+           reading as a greeting. */
+        className="display relative text-[clamp(0.9rem,5.2vw,5rem)] text-paper"
       >
-        take a breath,
+        thank you for coming
         <br />
-        and touch the grass
+        all this way
       </motion.h2>
 
       <motion.button
         type="button"
         onClick={onEnter}
         initial={{ opacity: 0, y: 12 }}
-        animate={state(12)}
+        animate={state}
         transition={{
           duration: leaving ? EXIT.copyOut * 0.8 : 0.9,
           ease: leaving ? "easeIn" : EASE,
-          delay: leaving ? 0 : active && !reduced ? 1.3 : 0,
+          delay: leaving ? 0 : reduced ? 0 : 1.6,
         }}
         whileHover={leaving ? undefined : { y: -2 }}
         whileTap={leaving ? undefined : { y: 0 }}
-        className="label mt-10 rounded-full border border-white/25 bg-white/10 px-8 py-3 text-white backdrop-blur-md transition-colors hover:border-white/50 hover:bg-white/20"
+        /* The site's own sticker, inverted for the night. The blurred glass pill
+           this replaces belonged to no other part of the design. */
+        className="sticker sticker-solid sticker-lg relative mt-[5vh]"
       >
-        Enter
+        Enter ↓
       </motion.button>
     </div>
   );

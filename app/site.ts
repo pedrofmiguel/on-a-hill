@@ -39,8 +39,25 @@ function resolveSiteUrl(): string {
 export const SITE_URL = resolveSiteUrl();
 
 /**
- * Contact address. A placeholder until the domain question is settled — it is
- * an address *at* a domain that may never be bought, so it is almost certainly
- * not deliverable yet. Referenced by the footer, the menu and the hero.
+ * Contact address. Referenced by the footer, the menu and the hero — a real
+ * mailbox, deliberately not tied to the site's own domain so it keeps working
+ * whatever happens to that.
  */
-export const CONTACT_EMAIL = "hello@pedroferreira.dev";
+export const CONTACT_EMAIL = "pmferreiradev@gmail.com";
+
+/**
+ * The soundtrack he builds to. Hung off the hero drawing (the one wearing the
+ * headphones) rather than listed as a link, because it is an aside about the
+ * person, not a way to contact him.
+ */
+export const SPOTIFY_URL =
+  "https://open.spotify.com/user/obarrier?si=9bd567fa03d842d5";
+
+/** Where to find him. Used by the footer and the full-screen menu. */
+export const SOCIALS = [
+  { label: "GitHub", href: "https://github.com/pedrofmiguel" },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/pedro-ferreira-7651a4136/",
+  },
+] as const;

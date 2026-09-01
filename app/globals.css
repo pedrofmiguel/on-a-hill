@@ -81,16 +81,6 @@ body {
   text-wrap: pretty;
 }
 
-/* One word in the capability field. inline-block because the per-word float is
-   a transform, and transforms do not apply to inline boxes. */
-.display-word {
-  display: inline-block;
-  font-size: clamp(1.5rem, 5vw, 5rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-}
-
 /* The tiny uppercase meta labels that sit above sections. Tracking is far
    lower than it was under the proportional face — letter-spacing a wide mono at
    0.2em pushes a three-word label across half the screen. */
@@ -138,6 +128,26 @@ a.sticker:hover,
 button.sticker:hover {
   background: var(--color-ink);
   color: var(--color-paper);
+}
+
+/* Inverted, for the entrance sky — a paper chip on the night reads as the one
+   thing to press without needing a border, a blur or a shadow to say so.
+   Declared after `.sticker` so it wins on equal specificity. */
+.sticker-solid {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+button.sticker-solid:hover,
+a.sticker-solid:hover {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+/* The one place a sticker is the primary action rather than a repeated tag. */
+.sticker-lg {
+  padding: 0.85rem 1.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
 }
 
 /* An underline that draws itself, rather than a colour swap. */
@@ -217,21 +227,6 @@ html.lenis {
     }
     to {
       transform: translate3d(var(--toX, 4%), var(--toY, -2%), 0) scale(1.08);
-    }
-  }
-
-  /* Individual words in the capability field breathe on their own clock, so
-     the block never reads as one rigid slab sliding past. */
-  .word-float {
-    animation: wordFloat var(--float-dur, 14s) ease-in-out infinite alternate;
-    animation-delay: var(--float-delay, 0s);
-  }
-  @keyframes wordFloat {
-    from {
-      transform: translate3d(0, var(--float-from, 0.18em), 0);
-    }
-    to {
-      transform: translate3d(0, var(--float-to, -0.18em), 0);
     }
   }
 }

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRevealed } from "../reveal/store";
 import { setScrollLocked } from "./SmoothScroll";
-import { CONTACT_EMAIL as EMAIL } from "../../site";
+import { CONTACT_EMAIL as EMAIL, SOCIALS } from "../../site";
 
 const LINKS = [
   { label: "Index", href: "/" },
@@ -24,10 +24,7 @@ const META: { title: string; lines: { text: string; href?: string }[] }[] = [
   },
   {
     title: "Elsewhere",
-    lines: [
-      { text: "GitHub", href: "https://github.com/" },
-      { text: "LinkedIn", href: "https://www.linkedin.com/" },
-    ],
+    lines: SOCIALS.map((s) => ({ text: s.label, href: s.href })),
   },
 ];
 

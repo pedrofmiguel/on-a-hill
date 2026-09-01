@@ -36,7 +36,7 @@ export const PROJECTS: Project[] = [
       "Everything after that is monospace on paper. One typeface, hairlines instead of boxes, and no colour anywhere except the block each project gets to itself.",
     ],
     tags: ["Next.js", "React Three Fiber", "GLSL", "Motion", "Lenis"],
-    url: "https://github.com/",
+    url: "https://github.com/pedrofmiguel/on-a-hill",
     accent: "oklch(0.66 0.2 34)",
   },
   {
