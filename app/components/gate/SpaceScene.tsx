@@ -2,6 +2,7 @@
 
 import { motion, type Transition } from "motion/react";
 import FloatingFigure from "./FloatingFigure";
+import Globe from "./Globe";
 
 /* The drawing is authored in this box and stretched to the viewport. Stretching
    is deliberate: the planet should always reach both edges, whatever the screen.
@@ -10,42 +11,6 @@ import FloatingFigure from "./FloatingFigure";
    stays a hairline at 390px and at 2560px. */
 const VW = 1600;
 const VH = 900;
-
-/* Earth, as a limb rather than a ball.
-
-   The radius is enormous on purpose. A circle small enough to read as a planet
-   sits on the bottom of the frame like a dome on a table; at r=2400 the arc is
-   shallow enough to leave the frame at both edges (y≈857 at x=0 and x=1600,
-   against a 900 floor) and the eye reads it as the curve of something far too
-   big to see all of. That is the whole trick — you are not looking at a planet,
-   you are looking at part of one. */
-const EARTH = { cx: VW / 2, cy: 3120, r: 2400 };
-/** The atmosphere, a second hairline standing off the surface. */
-const ATMOSPHERE = { ...EARTH, r: 2460 };
-
-/** An arc as a path, sampled across the full width and clipped to the frame. */
-function limbPath({ cx, cy, r }: { cx: number; cy: number; r: number }): string {
-  let d = "";
-  for (let i = 0; i <= 120; i++) {
-    const x = (i / 120) * VW;
-    const dx = x - cx;
-    const y = cy - Math.sqrt(Math.max(0, r * r - dx * dx));
-    d += i === 0 ? `M${x.toFixed(1)},${y.toFixed(1)}` : ` L${x.toFixed(1)},${y.toFixed(1)}`;
-  }
-  return d;
-}
-
-const EARTH_PATH = limbPath(EARTH);
-const ATMOSPHERE_PATH = limbPath(ATMOSPHERE);
-
-/* Continents, drawn as outlines sitting on the surface. Not any real coastline
-   — a recognisable map would invite the eye to check it, which is not what this
-   screen is for. These are landmass-shaped and nothing more. */
-const CONTINENTS = [
-  "M300,832c22,-19 61,-24 96,-13c30,9 41,29 74,31c28,2 47,-12 72,-5c25,7 27,29 12,41c-19,15 -60,12 -96,10c-56,-3 -117,-6 -148,-25c-18,-11 -22,-30 -10,-39Z",
-  "M742,790c31,-17 78,-14 104,4c19,13 16,32 38,41c19,8 47,3 60,17c12,13 -3,30 -28,35c-40,8 -101,4 -136,-11c-33,-14 -49,-40 -49,-58c0,-12 4,-22 11,-28Z",
-  "M1132,846c25,-14 66,-13 88,3c16,12 12,29 30,37c15,7 38,3 47,15c9,12 -5,26 -27,30c-35,7 -85,2 -113,-11c-27,-13 -39,-35 -37,-52c1,-10 5,-18 12,-22Z",
-];
 
 /* Stars, as percentages of the viewport rather than points in the drawing.
 
@@ -134,16 +99,17 @@ const METEORS = [
 ];
 
 /**
- * The entrance backdrop: paper, the curve of the Earth, satellites on dashed
- * tracks, the occasional meteor, and a figure floating in the middle of it.
+ * The entrance backdrop: paper, a wireframe globe too large for the frame,
+ * satellites on dashed tracks, the occasional meteor, and a figure floating
+ * above the world.
  *
  * This replaces a drawn hill, which replaced a WebGL starfield. With the grass
  * gone there is no GL context anywhere on the site — the whole entrance is now
  * two SVGs and some transforms.
  *
- * On the way out nothing fades. The limb and the atmosphere withdraw along
- * their own length, like a pen being lifted, by animating motion's `pathLength`;
- * the craft climb away; the figure drifts up out of frame.
+ * On the way out nothing fades. Every line of the globe withdraws along its own
+ * length, like a pen being lifted, by animating motion's `pathLength`; the craft
+ * climb away; the figure drifts up out of frame.
  */
 export default function SpaceScene({
   drawn = false,
@@ -156,7 +122,7 @@ export default function SpaceScene({
   drawn?: boolean;
   /** The satellites climb out of frame, the figure drifts away. */
   leaving?: boolean;
-  /** A beat later: the planet withdraws. */
+  /** A beat later: the globe is pulled off, line by line. */
   linesOut?: boolean;
   reduced?: boolean;
 }) {
@@ -209,47 +175,7 @@ export default function SpaceScene({
         preserveAspectRatio="xMidYMax slice"
         fill="none"
       >
-        {/* The atmosphere is drawn before the surface and leaves after it, so
-            the planet is undrawn from the ground up. */}
-        <Limb
-          d={ATMOSPHERE_PATH}
-          stroke="var(--color-ink-3)"
-          width={1}
-          drawn={drawn}
-          out={linesOut}
-          reduced={reduced}
-          delay={0.28}
-          outDelay={0}
-        />
-        <Limb
-          d={EARTH_PATH}
-          stroke="var(--color-ink)"
-          width={2.2}
-          drawn={drawn}
-          out={linesOut}
-          reduced={reduced}
-          delay={0}
-          outDelay={0.12}
-        />
-
-        {/* Continents come in last and go out first — they are detail on the
-            surface, and detail is the first thing a pen stops bothering with. */}
-        <motion.g
-          stroke="var(--color-ink-2)"
-          strokeWidth={1.3}
-          vectorEffect="non-scaling-stroke"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: linesOut ? 0 : drawn ? 1 : 0 }}
-          transition={{
-            duration: linesOut ? 0.35 : reduced ? 0 : 1,
-            delay: linesOut ? 0 : reduced ? 0 : 0.9,
-            ease: "easeOut",
-          }}
-        >
-          {CONTINENTS.map((d, i) => (
-            <path key={i} d={d} vectorEffect="non-scaling-stroke" />
-          ))}
-        </motion.g>
+        <Globe drawn={drawn} out={linesOut} reduced={reduced} />
       </svg>
 
       {TRACKS.map((track, i) => (
@@ -262,55 +188,6 @@ export default function SpaceScene({
 
       <FloatingFigure leaving={leaving} drawn={drawn} reduced={reduced} />
     </div>
-  );
-}
-
-/** One arc of the planet, drawn on and pulled off along its own length. */
-function Limb({
-  d,
-  stroke,
-  width,
-  drawn,
-  out,
-  reduced,
-  delay,
-  outDelay,
-}: {
-  d: string;
-  stroke: string;
-  width: number;
-  drawn: boolean;
-  out: boolean;
-  reduced: boolean;
-  delay: number;
-  outDelay: number;
-}) {
-  return (
-    <motion.path
-      d={d}
-      stroke={stroke}
-      strokeWidth={width}
-      /* Butt caps, deliberately. A round cap on a dash of length zero is still
-         drawn — as a dot — so an undrawn limb would leave a speck sitting at the
-         left edge of the screen through the whole loading hold. Butt caps render
-         nothing at zero length, which is what "not drawn yet" should look like. */
-      vectorEffect="non-scaling-stroke"
-      /* `pathLength` and `pathOffset` are motion's own props, not SVG
-         attributes: it normalises the path to a length of 1 and derives
-         stroke-dasharray/dashoffset from them itself. Hand-rolling those two
-         properties silently does nothing, because motion owns them and rewrites
-         them every frame. Use the library's API, not the CSS underneath it. */
-      initial={{ pathLength: 0, pathOffset: 0 }}
-      animate={{
-        pathLength: out || !drawn ? 0 : 1,
-        pathOffset: out ? 1 : 0,
-      }}
-      transition={{
-        duration: out ? 0.7 : reduced ? 0 : 1.7,
-        delay: out ? outDelay : reduced ? 0 : delay,
-        ease: out ? [0.7, 0, 0.84, 0] : [0.16, 1, 0.3, 1],
-      }}
-    />
   );
 }
 
