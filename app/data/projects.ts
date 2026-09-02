@@ -24,8 +24,10 @@ export type Project = {
 
 export const PROJECTS: Project[] = [
   {
+    // Slug kept as "on-a-hill" even though the title now reads plainly: the
+    // URL has been shared, and the file header asks for slugs to stay put.
     slug: "on-a-hill",
-    title: "On a Hill",
+    title: "Personal Website",
     role: "Design + Code",
     year: "2026",
     summary:
@@ -40,46 +42,69 @@ export const PROJECTS: Project[] = [
     accent: "oklch(0.66 0.2 34)",
   },
   {
-    slug: "field-notes",
-    title: "Field Notes",
+    slug: "digi",
+    title: "digi",
     role: "Code",
-    year: "2025",
+    year: "2026",
     summary:
-      "A writing surface that gets out of the way — local-first, keyboard-driven, syncs when it can.",
+      "The digidestined, put to work. A crew of named agents living inside Claude Code, each summoned by a slash command, each owning one job.",
     body: [
-      "A markdown editor with an opinion: no chrome until you need it. Offline-first with a small sync layer, built to feel instant on any connection.",
-      "Placeholder entry — swap this for a real project. The structure (summary, body paragraphs, tags, link) is all you need to fill in.",
+      "A personal agent system: Joe searches the Obsidian vault, Matt researches the web, Tai reviews code, Sora argues about design, Izzy keeps projects moving. Digi coordinates the rest.",
+      "The cast is the Digimon one, and that is doing more work than a joke. Names you already know carry a temperament with them, so knowing which agent to reach for costs nothing — where a single general-purpose assistant makes you re-explain the job every time.",
+      "Shell installers for macOS and Windows, wired into Obsidian, Slack, and Atlassian so the agents work against real day-to-day tools rather than a sandbox.",
     ],
-    tags: ["React", "IndexedDB", "TypeScript"],
-    accent: "oklch(0.62 0.15 200)",
-  },
-  {
-    slug: "atlas",
-    title: "Atlas",
-    role: "Design + Code",
-    year: "2025",
-    summary:
-      "A component system and docs site for a small product team — tokens, primitives, and the guardrails around them.",
-    body: [
-      "Design tokens as the contract between design and code, a headless component layer on top, and a living documentation site that renders the real components.",
-      "Placeholder entry — replace with your own work. Add a `url` field to surface a live link with the red arrow, like the reference.",
-    ],
-    tags: ["Design Systems", "Tailwind", "Storybook"],
-    accent: "oklch(0.64 0.16 145)",
-  },
-  {
-    slug: "signal",
-    title: "Signal",
-    role: "Code",
-    year: "2024",
-    summary:
-      "A real-time dashboard that stays calm under load — streaming data, no layout thrash, honest empty states.",
-    body: [
-      "Server-sent events into a virtualized view, with careful attention to the moments most dashboards ignore: loading, empty, and error.",
-      "Placeholder entry. Keep three to six projects here — enough to show range, few enough that each one earns its place.",
-    ],
-    tags: ["Next.js", "SSE", "Data Viz"],
+    tags: ["Claude Code", "Agents", "Obsidian", "Slack", "Shell"],
+    url: "https://github.com/pedroferreira4/digi",
     accent: "oklch(0.6 0.17 300)",
+  },
+  {
+    slug: "skills-bag",
+    title: "Skills Bag",
+    role: "Design + Code",
+    year: "2026",
+    summary:
+      "A native desktop app for the folder of Claude skills you would otherwise be editing by hand.",
+    body: [
+      "Browse, search, create, and edit the skills in ~/.claude/skills without opening a file manager. Disabling a skill moves it aside rather than deleting it, so turning something off is never a decision you have to be sure about.",
+      "Skills can be imported from anywhere on disk as symlinks, and deletion is symlink-aware — it removes the link and leaves the source where it is.",
+      "React 19 and Tailwind v4 over a Rust backend, packaged with Tauri. macOS installs in one command; Windows builds the installer.",
+    ],
+    tags: ["Tauri", "Rust", "React", "TypeScript", "Tailwind"],
+    url: "https://github.com/pedrofmiguel/skills-bag",
+    accent: "oklch(0.55 0.13 75)",
+  },
+  {
+    slug: "diff-erent",
+    title: "diff-erent",
+    role: "Code",
+    year: "2026",
+    summary:
+      "A git diff view built for reviewing rather than reading — hunks that summarise themselves, and a rail showing what each change puts at risk.",
+    body: [
+      "An extension for VS Code and Cursor that replaces the side-by-side diff for review work. Every hunk carries a summary of what it actually changed — behaviour, imports, exports, styles — so a long diff can be triaged before it is read line by line.",
+      "Token-level inline diffing for word changes, filtering by file name or status, and an impact rail built from the static import graph that flags which files a change reaches into.",
+      "The analysis engine is deliberately separate from the extension layer: the core modules run under plain Node, with no editor attached.",
+    ],
+    tags: ["TypeScript", "VS Code", "Node.js", "Git"],
+    url: "https://github.com/pedrofmiguel/diff-erent",
+    accent: "oklch(0.55 0.12 240)",
+  },
+  {
+    slug: "rocksteady-barbershop",
+    title: "Rocksteady Barbearia",
+    role: "Design + Code",
+    year: "2026",
+    summary:
+      "A barbershop on Av. Vasco da Gama, and the booking system it runs on. One deep green, one enormous word, and a chair you can actually reserve.",
+    body: [
+      "The shop needed bookings more than it needed a brochure, so the whole site is built around one path: pick your barber, pick your slot, done. Vitinho or Marcondes, chosen by face rather than from a dropdown — in a barbershop you are booking a person, not a service.",
+      "The homepage spends everything on one gesture. ROCKSTEADY set at the full width of the screen in white on #015136, with a dotted halftone drifting underneath the type, and a single button below it. There is no scrolling tour of the premises and no stock photography of scissors.",
+      "WordPress underneath, with PHP and hand-written CSS over the top rather than a page builder — the shop can change its own hours and prices without calling me, which is the only reason to be on WordPress at all.",
+    ],
+    tags: ["WordPress", "PHP", "HTML", "CSS", "Booking System"],
+    url: "https://www.rocksteady-barbearia.com/",
+    /* Sampled from the live stylesheet, not matched by eye: #015136. */
+    accent: "oklch(0.385 0.083 162)",
   },
 ];
 
