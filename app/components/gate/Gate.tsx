@@ -276,7 +276,11 @@ function GrassCopy({
     /* Centred on the screen. Worth knowing what that costs: the type crosses
        the ridges rather than sitting in clear sky above them, which is why the
        block carries its own soft scrim below. */
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
+    /* `select-none` on the wrapper, so it covers the greeting and the button
+       together. Neither is text anyone would want to copy, and a stray drag
+       across a full-screen entrance leaves the whole line highlighted — which
+       looks like a mis-click, not a selection. */
+    <div className="absolute inset-0 z-10 flex select-none flex-col items-center justify-center px-6 text-center">
       {/* Paper, not ink, now that the world beneath it is light — it lifts the
           type off the ridges by clearing a space rather than by darkening one.
           It leaves with the copy it backs: as a plain div it outlived the rest
