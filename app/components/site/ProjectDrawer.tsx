@@ -29,6 +29,14 @@ import type { Project } from "../../data/projects";
  * Nothing here changes the layout on hover. The lift is a transform and the
  * colours are colours, so no folder can ever shove the ones below it down the
  * page while the pointer is crossing the row.
+ *
+ * On touch there is no hover, so that colour never arrived and the drawer was
+ * a grey list of hairlines — the one dose of colour on the page, withheld from
+ * the people most likely to see the page. Under `(hover: none)` the tab is
+ * simply filled from the start. The query keys off the input device rather
+ * than a width breakpoint on purpose: a narrow desktop window still has a
+ * pointer and keeps the reveal, and a large tablet has no pointer and gets the
+ * colour.
  */
 export default function ProjectDrawer({ projects }: { projects: Project[] }) {
   return (
@@ -81,14 +89,14 @@ function Folder({ project, index }: { project: Project; index: number }) {
               below it. A 3px radius, where the rest of the site is square: a
               file tab is the one shape here that is rounded in life, and at
               3px it still cannot be mistaken for a rounded card. */}
-          <div className="ml-[calc(var(--i)*7%)] w-max rounded-t-[3px] border border-b-0 border-rule bg-paper px-4 pb-2 pt-[0.6rem] transition-colors duration-300 group-hover:border-transparent group-hover:bg-[var(--accent)] group-focus-visible:border-transparent group-focus-visible:bg-[var(--accent)] sm:ml-[calc(var(--i)*19%)] sm:px-5">
-            <span className="block text-sm font-medium tracking-[-0.02em] text-ink transition-colors duration-300 group-hover:text-white group-focus-visible:text-white sm:text-base">
+          <div className="ml-[calc(var(--i)*7%)] w-max rounded-t-[3px] border border-b-0 border-rule bg-paper px-4 pb-2 pt-[0.6rem] transition-colors duration-300 group-hover:border-transparent group-hover:bg-[var(--accent)] group-focus-visible:border-transparent group-focus-visible:bg-[var(--accent)] [@media(hover:none)]:border-transparent [@media(hover:none)]:bg-[var(--accent)] sm:ml-[calc(var(--i)*19%)] sm:px-5">
+            <span className="block text-sm font-medium tracking-[-0.02em] text-ink transition-colors duration-300 group-hover:text-white group-focus-visible:text-white [@media(hover:none)]:text-white sm:text-base">
               {project.title}
             </span>
           </div>
 
           {/* The rim, and the folder itself. */}
-          <div className="border-t border-rule transition-colors duration-300 group-hover:border-[var(--accent)] group-focus-visible:border-[var(--accent)]">
+          <div className="border-t border-rule transition-colors duration-300 group-hover:border-[var(--accent)] group-focus-visible:border-[var(--accent)] [@media(hover:none)]:border-[var(--accent)]">
             <div className="grid gap-4 bg-paper py-6 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:items-start sm:gap-8 sm:py-7">
               <span className="mono tnum text-[11px] leading-none text-ink-3">
                 {String(index + 1).padStart(2, "0")}
@@ -98,7 +106,14 @@ function Folder({ project, index }: { project: Project; index: number }) {
                 {project.summary}
               </p>
 
-              <div className="flex items-center justify-between gap-6 sm:flex-col sm:items-end sm:gap-4">
+              {/* `pr` is clearance for the arrow's own travel, not decoration. The
+                  arrow slides 4px right on hover, and this column is flush with
+                  the container's content edge — measured at every breakpoint,
+                  the slack was exactly 0 — so the glyph crossed the edge on the
+                  way out. Padding the whole column keeps the meta line and the
+                  Open row aligned with each other while the arrow gains
+                  somewhere to go. */}
+              <div className="flex items-center justify-between gap-6 pr-1 sm:flex-col sm:items-end sm:gap-4 sm:pr-2">
                 <span className="label whitespace-nowrap text-ink-3">
                   {project.role} · {project.year}
                 </span>
