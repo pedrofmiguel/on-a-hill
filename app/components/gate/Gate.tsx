@@ -15,24 +15,28 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 /* The arrival, which is a loading screen wearing ordinary clothes.
 
-   The satellite and its orbit are up on the first frame — they are SVG and cost
-   nothing. Everything else waits for the grass, because the grass is the part
-   that takes time: a dynamic import, 15,000 instances to generate, and a shader
-   that compiles during its first draw. Drawing the ridges before that landed
-   meant the entrance played to an empty stage and the field then appeared, fully
-   formed, halfway through the greeting.
+   The satellites and the stars are up on the first frame — they are SVG and
+   cost nothing. What everything else waits for is the *typeface*.
+
+   That used to be the grass: a dynamic import, 15,000 instances and a shader
+   compiling during its first draw. With the field gone there is no WebGL left
+   to wait for, and it would have been easy to keep a timer here and call it a
+   loading screen. This waits on something real instead. The greeting is set in
+   Martian Mono at 5vw; drawn before the font lands it renders in a fallback and
+   then reflows, which at that size is a visible lurch across the middle of the
+   screen. `document.fonts.ready` is the honest signal.
 
    Two guards around the wait:
 
-   `minHold` is a floor, not a delay for its own sake. On a warm cache the field
-   is ready in well under 200ms, and without a floor the satellite would flash
+   `minHold` is a floor, not a delay for its own sake. On a warm cache the font
+   is ready almost immediately, and without a floor the satellites would flash
    past for three frames — which reads as a glitch, not as a loading screen. A
-   beat of the satellite alone is the whole idea.
+   beat of the sky alone is the whole idea.
 
-   `maxWait` is the giving-up point. If WebGL is blocked, unavailable, or simply
-   slow, `onGrassReady` never fires; without this the visitor would sit looking
-   at a satellite forever. At 4s the rest of the drawing goes ahead regardless
-   and the entrance plays without its field — degraded, but never stuck. */
+   `maxWait` is the giving-up point. `document.fonts.ready` can hang on a
+   flaky connection; without this the visitor would sit looking at an empty sky
+   forever. At 4s the drawing goes ahead regardless — in a fallback face, which
+   is worse than waiting a moment and better than never arriving. */
 const ENTRANCE = {
   minHold: 0.7,
   maxWait: 4,
@@ -42,11 +46,10 @@ const ENTRANCE = {
    seconds, from the click) live together here so the choreography can be read
    at a glance instead of reconstructed from delays scattered across the file.
 
-     0.00  the copy fades and lifts away; the satellite climbs out of frame
-     0.20  the field tears loose — strokes erode, tumble, blow off downwind
-     1.00  the ridges begin withdrawing along their own length
-     1.60  the field has finished leaving
-     1.90  the last ridge is gone — bare paper
+     0.00  the copy fades and lifts away; the satellites climb out of frame
+     0.00  the figure drifts up and away, turning as it goes
+     1.00  the planet begins withdrawing along its own length
+     1.90  the last arc is gone — bare paper
      1.90  the site begins arriving on that same paper
      2.05  the overlay is cut
 
@@ -55,13 +58,12 @@ const ENTRANCE = {
    A drawn world needs nothing of the kind. The gate and the site stand on the
    same paper, so once the drawing has gone there is nothing left to hide — the
    overlay is a blank sheet over an identical sheet, and cutting it is
-   invisible. That is why `pageIn` and the last ridge land on the same beat and
+   invisible. That is why `pageIn` and the last arc land on the same beat and
    `total` follows a breath later: by then the only difference between the two
    layers is the site's own content fading up, and it is still near-zero. */
 const EXIT = {
   copyOut: 0.55,
-  grassAt: 0.2,
-  ridgesAt: 1.0,
+  linesAt: 1.0,
   pageIn: 1.9,
   total: 2.05,
 };
@@ -87,9 +89,6 @@ export default function Gate() {
   // effect immediately corrects it for returning visitors.
   const [phase, setPhase] = useState<Phase>("grass");
   const [mounted, setMounted] = useState(true);
-  // Separate from `phase` because the field starts coming apart a beat *after*
-  // the click, once the copy is already on its way out.
-  const [fieldBreaking, setFieldBreaking] = useState(false);
   // The field has painted (or we have stopped waiting for it): the rest of the
   // drawing may begin.
   const [drawn, setDrawn] = useState(false);
@@ -97,9 +96,9 @@ export default function Gate() {
   // during render is impure, and a re-render would move the start of the hold.
   const openedAt = useRef(0);
   const holdTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Later again: the ridges hold while the field is still visibly leaving, so
-  // the two do not read as one event.
-  const [ridgesOut, setRidgesOut] = useState(false);
+  // Later again: the planet holds while the satellites are still visibly
+  // leaving, so the two do not read as one event.
+  const [linesOut, setLinesOut] = useState(false);
   const reduced = useReducedMotion();
   const exitTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -146,7 +145,21 @@ export default function Gate() {
   useEffect(() => {
     openedAt.current = Date.now();
     const giveUp = setTimeout(() => setDrawn(true), ENTRANCE.maxWait * 1000);
+
+    // Held back to `minHold` if the font arrived sooner, so a warm cache still
+    // gets a loading screen rather than a flicker. `document.fonts` is absent
+    // in a few old browsers; there the give-up timer is the whole mechanism.
+    let live = true;
+    const ready = document.fonts?.ready ?? Promise.resolve();
+    ready.then(() => {
+      if (!live) return;
+      const elapsed = (Date.now() - openedAt.current) / 1000;
+      const remaining = Math.max(0, ENTRANCE.minHold - elapsed);
+      holdTimer.current = setTimeout(() => setDrawn(true), remaining * 1000);
+    });
+
     return () => {
+      live = false;
       clearTimeout(giveUp);
       clearTimeout(holdTimer.current);
     };
@@ -159,17 +172,6 @@ export default function Gate() {
     const timers = exitTimers.current;
     return () => timers.forEach(clearTimeout);
   }, []);
-
-  /* Raised on the field's second frame. Holds the signal back if it arrived
-     sooner than `minHold`, so a fast machine still gets a loading screen rather
-     than a flicker. Guarded because it costs nothing to be sure this runs once
-     — the give-up timer may have fired first. */
-  function handleGrassReady() {
-    if (drawn) return;
-    const elapsed = (Date.now() - openedAt.current) / 1000;
-    const remaining = Math.max(0, ENTRANCE.minHold - elapsed);
-    holdTimer.current = setTimeout(() => setDrawn(true), remaining * 1000);
-  }
 
   function enter() {
     // Nothing to enter until there is something to leave.
@@ -185,7 +187,7 @@ export default function Gate() {
     if (reduced) {
       // Same shape, no travel: the drawing is taken off the paper at once and
       // the page arrives on it.
-      exitTimers.current.push(setTimeout(() => setRidgesOut(true), 120));
+      exitTimers.current.push(setTimeout(() => setLinesOut(true), 120));
       exitTimers.current.push(setTimeout(reveal, 450));
       exitTimers.current.push(setTimeout(finish, 700));
       return;
@@ -194,8 +196,7 @@ export default function Gate() {
     const at = (seconds: number, fn: () => void) =>
       exitTimers.current.push(setTimeout(fn, seconds * 1000));
 
-    at(EXIT.grassAt, () => setFieldBreaking(true));
-    at(EXIT.ridgesAt, () => setRidgesOut(true));
+    at(EXIT.linesAt, () => setLinesOut(true));
     at(EXIT.pageIn, reveal);
     at(EXIT.total, finish);
   }
@@ -230,10 +231,8 @@ export default function Gate() {
           <Scene
             drawn={drawn}
             leaving={leaving}
-            ridgesOut={ridgesOut}
-            dissolving={fieldBreaking}
+            linesOut={linesOut}
             reduced={!!reduced}
-            onGrassReady={handleGrassReady}
           />
 
           <GrassCopy

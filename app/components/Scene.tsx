@@ -1,22 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import LineSky from "./gate/LineSky";
-
-// Three.js is heavy — load the grass foreground only on the client, after first
-// paint, so the drawing shows instantly and the bundle stays lean.
-const GrassField = dynamic(() => import("./GrassField"), { ssr: false });
+import SpaceScene from "./gate/SpaceScene";
 
 /**
- * The "world" layer: a drawn one. Paper, three ink ridges and a satellite on a
- * dashed orbit, with a field of ink strokes for grass in front of them.
+ * The "world" layer behind the entrance: paper, the curve of the Earth,
+ * satellites, meteors, and a figure floating among them.
  *
- * This used to be a starry night — a WebGL sky shader with stars, meteors and
- * filled hill silhouettes, plus a film-grain pass over the top. All of that is
- * gone. The backdrop is SVG now, which means it paints on the first frame with
- * no GL context of its own, and the gate holds one WebGL context instead of
- * two.
+ * There is no WebGL here any more. This started as a night-sky fragment shader
+ * with 42,000 instanced grass blades, became a drawn hill with the same grass,
+ * and is now entirely SVG — the three.js field went out with the hill it grew
+ * on. Nothing to import dynamically, nothing to compile, nothing to defer: the
+ * scene renders on the server and is on screen in the first frame.
  *
  * Fills its nearest positioned ancestor (the entrance gate), so it's
  * `absolute`, not `fixed`.
@@ -24,48 +18,25 @@ const GrassField = dynamic(() => import("./GrassField"), { ssr: false });
 export default function Scene({
   drawn = false,
   leaving = false,
-  ridgesOut = false,
-  dissolving = false,
+  linesOut = false,
   reduced = false,
-  onGrassReady,
 }: {
-  /** The field has painted; the ridges may start being drawn. */
+  /** Fonts are up: the drawing may begin. */
   drawn?: boolean;
-  /** Raised once, when the field's first frame lands. */
-  onGrassReady?: () => void;
-  /** The exit has begun: the satellite climbs away and the orbit fades. */
+  /** The exit has begun: satellites and figure leave. */
   leaving?: boolean;
-  /** Later still — the ridges withdraw along their own length. */
-  ridgesOut?: boolean;
-  /** A beat after `leaving` — the field tears loose and blows downwind. */
-  dissolving?: boolean;
+  /** A beat later: the planet withdraws along its own length. */
+  linesOut?: boolean;
   reduced?: boolean;
 }) {
-  const [mounted, setMounted] = useState(false);
-  // Only the WebGL layer needs deferring. The drawing is plain SVG and can go
-  // up on the server's markup, so the screen is never empty paper.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setMounted(true), []);
-
   return (
     <div className="absolute inset-0 z-0 overflow-hidden bg-paper">
-      <LineSky
+      <SpaceScene
         drawn={drawn}
         leaving={leaving}
-        ridgesOut={ridgesOut}
+        linesOut={linesOut}
         reduced={reduced}
       />
-      {/* Faded rather than switched on. The field's first frame is a complete
-          field — 15,000 blades appearing between one frame and the next is a
-          pop, however fast the load was. */}
-      {mounted && (
-        <div
-          className="absolute inset-0 transition-opacity duration-700 ease-out"
-          style={{ opacity: drawn ? 1 : 0 }}
-        >
-          <GrassField dissolving={dissolving} onReady={onGrassReady} />
-        </div>
-      )}
     </div>
   );
 }
