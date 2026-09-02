@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import ProjectDetail from "../../components/site/ProjectDetail";
 import Reveal from "../../components/reveal/Reveal";
 import { PROJECTS, getProject } from "../../data/projects";
@@ -27,7 +27,8 @@ export default async function ProjectPage({
 }: PageProps<"/projects/[slug]">) {
   const { slug } = await params;
   const project = getProject(slug);
-  if (!project) notFound();
+  // An unknown slug goes home, like every other unmatched URL.
+  if (!project) redirect("/");
 
   return (
     <div className="mx-auto max-w-3xl px-6 pt-32 sm:px-10 sm:pt-40">

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import Modal from "../../../components/site/Modal";
 import ProjectDetail from "../../../components/site/ProjectDetail";
 import { getProject } from "../../../data/projects";
@@ -12,7 +12,8 @@ export default async function InterceptedProject({
 }) {
   const { slug } = await params;
   const project = getProject(slug);
-  if (!project) notFound();
+  // An unknown slug goes home, like every other unmatched URL.
+  if (!project) redirect("/");
 
   return (
     <Modal>
