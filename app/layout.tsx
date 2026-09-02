@@ -21,13 +21,15 @@ const martianMono = Martian_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Pedro Ferreira — on a hill",
-    template: "%s — Pedro Ferreira",
+    // What sits in the browser tab and in a bookmark list. "on a hill" is the
+    // site's own name and meant nothing to anyone reading a tab strip.
+    default: "Pedro's Portfolio",
+    template: "%s — Pedro's Portfolio",
   },
   description:
     "Pedro Ferreira, frontend developer and designer. Websites that behave themselves — client work, product work, and side projects.",
   openGraph: {
-    title: "Pedro Ferreira — on a hill",
+    title: "Pedro's Portfolio",
     description:
       "Pedro Ferreira, frontend developer and designer. Websites that behave themselves — client work, product work, and side projects.",
     type: "website",

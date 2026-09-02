@@ -4,12 +4,23 @@ import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-const BLADE_COUNT = 42000;
+/* Line-work is drawn, not filled, so the numbers that made a lush photographic
+   field make a black smear instead. 42,000 solid green blades read as grass;
+   42,000 ink strokes read as a bin bag. The count comes down and the blades get
+   thinner, because here the paper showing between the strokes is doing as much
+   work as the strokes — that is what makes it read as hatching rather than as a
+   silhouette. */
+const BLADE_COUNT = 17000;
 const BLADE_SEGMENTS = 4;
 const BLADE_HEIGHT = 0.52;
-const BLADE_WIDTH = 0.045;
+const BLADE_WIDTH = 0.019;
 const FIELD_X = 24;
-const FIELD_NEAR = 4.5;
+/* Pushed back from 4.5, but not as far as 0.6 — at 0.6 the field pulled away
+   from the bottom of the frame entirely and left a strip of bare paper under
+   it, so the grass read as a band floating across the middle of the screen.
+   3.0 keeps strokes reaching the bottom edge while staying far enough from the
+   lens that they are still strokes rather than slabs. */
+const FIELD_NEAR = 3.0;
 const FIELD_FAR = -36;
 const HILL_RISE = 6.2;
 
@@ -22,11 +33,13 @@ function groundY(x: number, z: number): number {
   return rise + roll;
 }
 
-/** Tall blades up close, short blades far away — matches perspective. */
+/** Tall blades up close, short blades far away — matches perspective. Range
+ *  flattened from 1.65..0.60: the drawing wants an even weight of mark across
+ *  the field, not a dramatic near-to-far falloff. */
 function bladeScale(z: number): number {
   const depth = (FIELD_NEAR - z) / (FIELD_NEAR - FIELD_FAR);
   const t = Math.max(0, Math.min(1, depth));
-  return 1.65 - t * 1.05;
+  return 0.95 - t * 0.5;
 }
 
 function makeBladeGeometry() {
@@ -60,8 +73,10 @@ function makeBladeGeometry() {
   const hash = new Float32Array(BLADE_COUNT);
 
   for (let i = 0; i < BLADE_COUNT; i++) {
-    // Bias toward the camera so the foreground feels full and lush.
-    const zt = Math.random() * Math.random();
+    // Spread evenly through the field rather than piling up at the lens. The
+    // old `random * random` stacked most of the 42,000 blades into the nearest
+    // few units, which is what made the foreground lush — and, in ink, opaque.
+    const zt = Math.pow(Math.random(), 0.85);
     const z = FIELD_NEAR + (FIELD_FAR - FIELD_NEAR) * zt;
     const depth = (FIELD_NEAR - z) / (FIELD_NEAR - FIELD_FAR);
     const x = (Math.random() * 2 - 1) * FIELD_X * (0.55 + 0.45 * depth);
@@ -190,19 +205,21 @@ const FRAG = /* glsl */ `
   }
 
   void main(){
-    vec3 col = mix(uBase, uTip, vH);
-    col *= 0.82 + vHash * 0.32;
-    col *= mix(0.55, 1.0, vH);
+    // A drawn stroke, not a lit surface. The blade runs from full ink at the
+    // root to the secondary grey at the tip, which is what a real pen does as
+    // it lifts — and it stops the field reading as a solid black mass where the
+    // strokes crowd together near the camera.
+    vec3 col = mix(uBase, uTip, vH * vH);
 
-    // Surface texture — clumpy grass noise like a rendered photo.
-    float coarse = hash11(vHash * 120.0 + floor(vH * 8.0)) * 0.5
-      + hash11(vHash * 310.0) * 0.5;
-    col *= 0.84 + coarse * 0.28;
+    // Per-blade pressure. Some strokes are laid down harder than others; this
+    // one line is most of the difference between hatching and a texture fill.
+    // It leans light (0.30..1.0) because ink only ever subtracts from paper.
+    float pressure = 0.30 + hash11(vHash * 7.13) * 0.70;
+    col = mix(uFogColor, col, pressure);
 
-    // Fine per-pixel grain on the blades.
-    vec2 px = gl_FragCoord.xy;
-    float fine = hash11(dot(floor(px), vec2(12.9898, 78.233)));
-    col += (fine - 0.5) * 0.1;
+    // The very tip fades out rather than ending square, so a blade finishes
+    // like a stroke instead of a cut wire.
+    col = mix(col, uFogColor, smoothstep(0.72, 1.0, vH) * 0.55);
 
     col = mix(col, uFogColor, vFog);
 
@@ -216,8 +233,9 @@ const FRAG = /* glsl */ `
     if (vDis > 0.001) {
       float ragged = (hash11(vHash * 91.7) - 0.5) * 0.18;
       if (vH < vDis * 1.15 + ragged) discard;
-      // What survives cools toward the night air on its way out.
-      col = mix(col, uFogColor, smoothstep(0.0, 1.0, vDis) * 0.7);
+      // What is still airborne lightens toward the paper as it goes, so the
+      // field thins out of the drawing rather than flying off it.
+      col = mix(col, uFogColor, smoothstep(0.0, 1.0, vDis) * 0.85);
     }
 
     gl_FragColor = vec4(col, 1.0);
@@ -229,9 +247,29 @@ const FRAG = /* glsl */ `
  *  closes — dissolving underneath an opaque wash is work nobody sees. */
 const DISSOLVE_SECONDS = 1.4;
 
-function Grass({ dissolving }: { dissolving: boolean }) {
+function Grass({
+  dissolving,
+  onReady,
+}: {
+  dissolving: boolean;
+  onReady?: () => void;
+}) {
   const geo = useMemo(() => makeBladeGeometry(), []);
   const mat = useRef<THREE.ShaderMaterial>(null);
+  // Counts frames rather than firing on mount. "Mounted" here would mean the
+  // component exists, which is two steps short of the field being visible:
+  // 15,000 instances still have to be generated, and the shader still has to
+  // compile — and compilation happens during the first draw, not before it. So
+  // the signal goes out on the second frame, by which point something has
+  // demonstrably been painted.
+  const frames = useRef(0);
+  // Held in a ref so the frame loop can reach the latest callback without the
+  // loop itself depending on it. Assigned in an effect, not during render:
+  // writing a ref while rendering is a purity violation React will flag.
+  const ready = useRef(onReady);
+  useEffect(() => {
+    ready.current = onReady;
+  }, [onReady]);
 
   // Where the pointer is (`to`) versus where the wake has caught up to (`at`).
   // Tracked on window rather than through R3F's pointer, because the canvas
@@ -258,11 +296,18 @@ function Grass({ dissolving }: { dissolving: boolean }) {
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
-      uFogNear: { value: 6 },
-      uFogFar: { value: 32 },
-      uBase: { value: new THREE.Color(0.05, 0.18, 0.07) },
-      uTip: { value: new THREE.Color(0.38, 0.66, 0.22) },
-      uFogColor: { value: new THREE.Color(0.04, 0.12, 0.09) },
+      // Aerial perspective, done as an etcher would: the far field is not
+      // hazier, it is simply less drawn. Pulled in from 6/32 so strokes are
+      // already thinning out by mid-field and the horizon is bare paper.
+      uFogNear: { value: 3 },
+      uFogFar: { value: 21 },
+      // Set from the site's own hexes via setStyle, which converts sRGB into
+      // the renderer's working space. Passing the components straight to the
+      // constructor (as the green version did) skips that conversion and
+      // quietly lands on a different colour than the CSS token names.
+      uBase: { value: new THREE.Color().setStyle("#0b0b0b") }, // --color-ink
+      uTip: { value: new THREE.Color().setStyle("#6d6b64") }, // --color-ink-2
+      uFogColor: { value: new THREE.Color().setStyle("#f2efe9") }, // --color-paper
       uResolution: { value: new THREE.Vector2(1, 1) },
       uDissolve: { value: 0 },
       // Parked off-screen so the field sits still until the pointer arrives.
@@ -274,6 +319,12 @@ function Grass({ dissolving }: { dissolving: boolean }) {
 
   useFrame((state, delta) => {
     if (!mat.current) return;
+
+    if (frames.current <= 2) {
+      frames.current += 1;
+      if (frames.current === 2) ready.current?.();
+    }
+
     const u = mat.current.uniforms;
     u.uTime.value = state.clock.elapsedTime;
     u.uResolution.value.set(
@@ -326,9 +377,12 @@ function Rig() {
 
 export default function GrassField({
   dissolving = false,
+  onReady,
 }: {
   /** Flip once, on the way out: the field tears loose and blows away. */
   dissolving?: boolean;
+  /** Fired once, after the field has actually drawn a frame. */
+  onReady?: () => void;
 }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-[2]">
@@ -340,7 +394,7 @@ export default function GrassField({
         <Rig />
         <ambientLight intensity={0.42} color="#9aacbf" />
         <directionalLight position={[-4, 9, 3]} intensity={0.85} color="#c4d0e4" />
-        <Grass dissolving={dissolving} />
+        <Grass dissolving={dissolving} onReady={onReady} />
       </Canvas>
     </div>
   );

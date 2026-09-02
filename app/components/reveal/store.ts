@@ -6,8 +6,8 @@ import { useSyncExternalStore } from "react";
  * A one-way latch shared by the entrance gate and the page content.
  *
  * Page sections render at opacity 0 and wait for this to flip, so the gate can
- * hand off deliberately: its copy leaves, the night dissolves to paper, and
- * only then does the page begin arriving underneath. Once flipped it stays
+ * hand off deliberately: its copy leaves, the drawing withdraws from the paper,
+ * and only then does the page begin arriving underneath. Once flipped it stays
  * flipped for the rest of the session, so client navigations are instant.
  */
 let revealed = false;

@@ -30,7 +30,10 @@ export default function Home() {
             the drawing's whole upper half. The soundtrack hover simply did not
             exist over the head, the headphones or the face. Nothing in a poster
             headline is clickable, so it has no business hit-testing. */}
-        <h1 className="display pointer-events-none relative z-10 text-[clamp(1.25rem,min(10.4vw,10.5svh),8rem)] leading-[1.04]">
+        {/* `select-none` alongside the existing `pointer-events-none`: the
+            headline is a poster, not copy. It is still read out by a screen
+            reader and still indexed — user-select only governs the drag. */}
+        <h1 className="display pointer-events-none relative z-10 select-none text-[clamp(1.25rem,min(10.4vw,10.5svh),8rem)] leading-[1.04]">
           {HEADLINE.map((line, i) => (
             <Reveal
               key={line}

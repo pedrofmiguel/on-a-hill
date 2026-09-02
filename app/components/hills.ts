@@ -1,5 +1,9 @@
-// Hill crest curves shared by the WebGL backdrop (WindHillCanvas).
-// Each layer is drawn back-to-front for a simple rolling-hill silhouette.
+// Hill crest curves for the entrance backdrop.
+//
+// `x` runs 0..1 across the width and the result is a fraction down from the
+// top. These coefficients outlived the fragment shader that used to evaluate
+// them per pixel: LineSky now samples the same functions in JS and stroke them
+// as SVG paths, so the hills are the same hills, drawn instead of filled.
 
 export const HILLS = [
   {
@@ -45,15 +49,3 @@ export function crestY(x: number): number {
     CREST.a2 * Math.sin(x * CREST.f2 + CREST.p2)
   );
 }
-
-function hillGlsl(name: string, h: (typeof HILLS)[number]): string {
-  return `
-float hill_${name}(float x){
-  return ${h.base.toFixed(4)}
-    + ${h.a1.toFixed(4)} * sin(x * ${h.f1.toFixed(4)} + ${h.p1.toFixed(4)})
-    + ${h.a2.toFixed(4)} * sin(x * ${h.f2.toFixed(4)} + ${h.p2.toFixed(4)});
-}`;
-}
-
-/** GLSL hill crest helpers injected into the fragment shader. */
-export const HILLS_GLSL = HILLS.map((h) => hillGlsl(h.name, h)).join("\n");

@@ -13,71 +13,69 @@ type Phase = "grass" | "leaving" | "done";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+/* The arrival, which is a loading screen wearing ordinary clothes.
+
+   The satellite and its orbit are up on the first frame — they are SVG and cost
+   nothing. Everything else waits for the grass, because the grass is the part
+   that takes time: a dynamic import, 15,000 instances to generate, and a shader
+   that compiles during its first draw. Drawing the ridges before that landed
+   meant the entrance played to an empty stage and the field then appeared, fully
+   formed, halfway through the greeting.
+
+   Two guards around the wait:
+
+   `minHold` is a floor, not a delay for its own sake. On a warm cache the field
+   is ready in well under 200ms, and without a floor the satellite would flash
+   past for three frames — which reads as a glitch, not as a loading screen. A
+   beat of the satellite alone is the whole idea.
+
+   `maxWait` is the giving-up point. If WebGL is blocked, unavailable, or simply
+   slow, `onGrassReady` never fires; without this the visitor would sit looking
+   at a satellite forever. At 4s the rest of the drawing goes ahead regardless
+   and the entrance plays without its field — degraded, but never stuck. */
+const ENTRANCE = {
+  minHold: 0.7,
+  maxWait: 4,
+};
+
 /* The exit is one continuous move cut into overlapping beats. The timings (in
    seconds, from the click) live together here so the choreography can be read
    at a glance instead of reconstructed from delays scattered across the file.
 
-     0.00  the copy fades and lifts away
-     0.20  the field tears loose — blades erode, tumble, blow off downwind
-     1.00  cloud cover rolls in, thickening over the emptying hill
+     0.00  the copy fades and lifts away; the satellite climbs out of frame
+     0.20  the field tears loose — strokes erode, tumble, blow off downwind
+     1.00  the ridges begin withdrawing along their own length
      1.60  the field has finished leaving
-     2.20  under full cover, the night is cut away in a single frame
-     2.60  the site begins arriving beneath the cloud
-     2.66  the cover starts thinning — the page shows through it
-     4.20  the last cloud clears
+     1.90  the last ridge is gone — bare paper
+     1.90  the site begins arriving on that same paper
+     2.05  the overlay is cut
 
-   Two things the middle depends on. The clouds must *outlast* the cover, so the
-   site is revealed through thinning cloud rather than behind a lifted curtain.
-   And the cover must not close before the field has finished coming apart —
-   the whole point of the dissolve is that it is watched. */
+   The night version of this screen needed a cloud cover: it had to hide an
+   opaque dark world being removed, or the hand-off would have been a flash.
+   A drawn world needs nothing of the kind. The gate and the site stand on the
+   same paper, so once the drawing has gone there is nothing left to hide — the
+   overlay is a blank sheet over an identical sheet, and cutting it is
+   invisible. That is why `pageIn` and the last ridge land on the same beat and
+   `total` follows a breath later: by then the only difference between the two
+   layers is the site's own content fading up, and it is still near-zero. */
 const EXIT = {
-  copyOut: 0.65,
+  copyOut: 0.55,
   grassAt: 0.2,
-  cloudsAt: 1.0,
-  cloudsDur: 3.2,
-  /* The night is switched off, not faded. It happens while the wash sits at a
-     measured opacity of 1.00 (see WASH_TIMES: the hold runs 1.79s–2.45s), so
-     there is nothing to see through and a cut is invisible. Fading it instead
-     would mean compositing an opacity animation across two WebGL canvases for
-     no visual gain — and it lets the scene unmount, releasing both contexts. */
-  sceneOutAt: 2.2,
-  pageIn: 2.6,
-  total: 4.3,
+  ridgesAt: 1.0,
+  pageIn: 1.9,
+  total: 2.05,
 };
-
-/* Keyframe positions within the cloud layer's own 0..1 life. The wash (the flat
-   paper sheet that guarantees full coverage) clears earlier than the cloud
-   shapes on top of it, which is what leaves cloud drifting over the live site.
-   Its hold — 0.30 to 0.52, i.e. 1.96s–2.66s — is the window the night is cut
-   away in, so `sceneOutAt` has to sit inside it. */
-const WASH_TIMES = [0, 0.3, 0.52, 0.92, 1];
-
-/* Per segment, so the cloud arrives and leaves on different curves: it builds
-   with a slow start and a firm finish, holds, then drains off gently. One
-   easing applied to every segment (the old arrangement) makes the whole life
-   feel machine-timed. */
-const CLOUD_EASE = [
-  [0.33, 0, 0.25, 1] as const,
-  "linear" as const,
-  [0.35, 0, 0.55, 1] as const,
-];
 
 /**
  * The entrance experience, shown once per browser session:
- *   grass (starry night) → Enter → the site.
+ *   a drawn hill under a satellite → Enter → the site.
  *
- * There used to be a white "thanks for coming" card in front of this for four
- * seconds. It said the same thing twice and made the visitor wait to be let
- * into the part worth seeing, so the greeting moved onto the hill and the card
- * is gone.
- *
- * The grass scene is the opaque floor of the overlay and mounts immediately.
- * Its container paints `bg-night` before any WebGL initializes, so there is
+ * The scene is the opaque floor of the overlay and mounts immediately. Its
+ * container paints `bg-paper` before anything else initializes, so there is
  * always one fully-opaque layer and the site behind is never visible until the
- * hand-off — the hills and blades simply arrive into an already-dark sky. The
- * real page still renders underneath for SEO; a pre-paint script hides this
- * overlay for returning visitors, and the effect below unmounts it so its WebGL
- * never initializes.
+ * hand-off. The real page still renders underneath for SEO; a pre-paint script
+ * hides this overlay for returning visitors, and the effect below unmounts it
+ * so its WebGL never initializes.
  */
 export default function Gate() {
   const pathname = usePathname();
@@ -92,9 +90,16 @@ export default function Gate() {
   // Separate from `phase` because the field starts coming apart a beat *after*
   // the click, once the copy is already on its way out.
   const [fieldBreaking, setFieldBreaking] = useState(false);
-  // Unmounts the whole night world (and both its WebGL contexts) mid-exit,
-  // hidden behind the cloud cover at its thickest.
-  const [nightGone, setNightGone] = useState(false);
+  // The field has painted (or we have stopped waiting for it): the rest of the
+  // drawing may begin.
+  const [drawn, setDrawn] = useState(false);
+  // Stamped in an effect rather than at `useRef(Date.now())`: reading the clock
+  // during render is impure, and a re-render would move the start of the hold.
+  const openedAt = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Later again: the ridges hold while the field is still visibly leaving, so
+  // the two do not read as one event.
+  const [ridgesOut, setRidgesOut] = useState(false);
   const reduced = useReducedMotion();
   const exitTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -127,7 +132,7 @@ export default function Gate() {
   }, [isHome]);
 
   // Hand the page back the moment the exit begins, so it can be scrolled while
-  // the cloud is still clearing. Releasing the lock is a consequence of the
+  // the drawing is still leaving. Releasing the lock is a consequence of the
   // phase change rather than part of the click itself, which keeps the DOM
   // write out of the event handler.
   useEffect(() => {
@@ -135,6 +140,17 @@ export default function Gate() {
     document.body.style.overflow = "";
     setScrollLocked(false);
   }, [phase]);
+
+  // Never wait forever on a GPU. Also clears the hold timer, so a slow field
+  // that lands mid-unmount cannot set state on a gone component.
+  useEffect(() => {
+    openedAt.current = Date.now();
+    const giveUp = setTimeout(() => setDrawn(true), ENTRANCE.maxWait * 1000);
+    return () => {
+      clearTimeout(giveUp);
+      clearTimeout(holdTimer.current);
+    };
+  }, []);
 
   // The exit timers are started by a user gesture rather than a state change,
   // so they are owned by a ref — but they still have to be cleared if the
@@ -144,8 +160,20 @@ export default function Gate() {
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  /* Raised on the field's second frame. Holds the signal back if it arrived
+     sooner than `minHold`, so a fast machine still gets a loading screen rather
+     than a flicker. Guarded because it costs nothing to be sure this runs once
+     — the give-up timer may have fired first. */
+  function handleGrassReady() {
+    if (drawn) return;
+    const elapsed = (Date.now() - openedAt.current) / 1000;
+    const remaining = Math.max(0, ENTRANCE.minHold - elapsed);
+    holdTimer.current = setTimeout(() => setDrawn(true), remaining * 1000);
+  }
+
   function enter() {
-    if (phase === "leaving" || phase === "done") return;
+    // Nothing to enter until there is something to leave.
+    if (!drawn || phase === "leaving" || phase === "done") return;
 
     try {
       sessionStorage.setItem(KEY, "1");
@@ -155,11 +183,11 @@ export default function Gate() {
     setPhase("leaving");
 
     if (reduced) {
-      // Same shape, no weather: the cover holds, the night is cut, the page
-      // arrives from behind it.
-      exitTimers.current.push(setTimeout(() => setNightGone(true), 600));
-      exitTimers.current.push(setTimeout(reveal, 650));
-      exitTimers.current.push(setTimeout(finish, 1700));
+      // Same shape, no travel: the drawing is taken off the paper at once and
+      // the page arrives on it.
+      exitTimers.current.push(setTimeout(() => setRidgesOut(true), 120));
+      exitTimers.current.push(setTimeout(reveal, 450));
+      exitTimers.current.push(setTimeout(finish, 700));
       return;
     }
 
@@ -167,9 +195,7 @@ export default function Gate() {
       exitTimers.current.push(setTimeout(fn, seconds * 1000));
 
     at(EXIT.grassAt, () => setFieldBreaking(true));
-    at(EXIT.sceneOutAt, () => setNightGone(true));
-    // The page begins its own entrance under the cloud, so by the time the
-    // cover thins there is already something there to be revealed.
+    at(EXIT.ridgesAt, () => setRidgesOut(true));
     at(EXIT.pageIn, reveal);
     at(EXIT.total, finish);
   }
@@ -179,8 +205,7 @@ export default function Gate() {
      rule it drives is `display: none !important` on the overlay — it exists so
      a returning visitor never sees a frame of the gate before hydration. Set on
      click, it deletes the overlay instantly and the whole exit plays inside an
-     invisible element: from the visitor's side the grass just snaps to a white
-     page. */
+     invisible element: from the visitor's side the drawing just snaps away. */
   function finish() {
     document.documentElement.setAttribute("data-gate", "done");
     setPhase("done");
@@ -196,170 +221,76 @@ export default function Gate() {
         <motion.div
           key="gate"
           data-gate-overlay
-          /* No background of its own any more. The night lives on the layer
-             below, so it can be removed under the cloud while this shell stays
-             mounted and transparent for the final clearing. */
           className={`fixed inset-0 z-[60] isolate overflow-hidden ${
             leaving ? "pointer-events-none" : ""
           }`}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          {/* The night world. Opaque, and the floor of the overlay until the
-              cloud cover is thick enough to take it away unseen. */}
-          {!nightGone && (
-            <div className="absolute inset-0">
-              <Scene dissolving={fieldBreaking} />
+          <Scene
+            drawn={drawn}
+            leaving={leaving}
+            ridgesOut={ridgesOut}
+            dissolving={fieldBreaking}
+            reduced={!!reduced}
+            onGrassReady={handleGrassReady}
+          />
 
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 z-[3]"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, transparent 42%, oklch(0.14 0.045 264 / 0.6) 100%)",
-                }}
-              />
-            </div>
-          )}
-
-          <GrassCopy leaving={leaving} reduced={!!reduced} onEnter={enter} />
-
-          {/* Cloud cover: rolls in over the emptying hill, holds long enough to
-              hide the night leaving, then thins out over the live site. */}
-          <CloudCover active={leaving} reduced={!!reduced} />
+          <GrassCopy
+            drawn={drawn}
+            leaving={leaving}
+            reduced={!!reduced}
+            onEnter={enter}
+          />
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
 
-/* Individual clouds. `rise` and `sideways` are where each one drifts as it
-   breaks up, in vh/vw — they pull apart in different directions so the cover
-   tears rather than dilating uniformly. Sizes overlap generously; the wash
-   underneath is what actually guarantees full coverage at the peak. */
-/* `hold` pushes back the moment this particular cloud starts to thin, as a
-   fraction of the layer's life. Without it every cloud began draining on the
-   same frame, which made the cover come off like a single sheet. */
-const CLOUDS = [
-  { x: "20%", y: "30%", size: "96vmax", rise: -16, sideways: -9, lead: 0, hold: 0.1 },
-  { x: "80%", y: "22%", size: "88vmax", rise: -12, sideways: 11, lead: 0.05, hold: 0 },
-  { x: "50%", y: "78%", size: "108vmax", rise: -20, sideways: 4, lead: 0.02, hold: 0.15 },
-  { x: "6%", y: "72%", size: "84vmax", rise: -14, sideways: -13, lead: 0.08, hold: 0.05 },
-  { x: "94%", y: "66%", size: "80vmax", rise: -18, sideways: 14, lead: 0.11, hold: 0.12 },
-];
-
-/* Brighter and warmer than the page, so once the wash has cleared the cloud
-   shapes are still legible drifting across the site rather than blending into
-   it. Opacity does the rest of the work. */
-const CLOUD_FILL =
-  "radial-gradient(circle at 50% 50%, #fffdf8 0%, #fffdf8 38%, rgba(255,253,248,0.55) 58%, transparent 74%)";
-
-function CloudCover({ active, reduced }: { active: boolean; reduced: boolean }) {
-  // Reduced motion gets the same beats without the weather: a plain hold and
-  // clear, so the page still arrives from *behind* something.
-  if (reduced) {
-    return (
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[30] bg-paper"
-        initial={{ opacity: 0 }}
-        animate={active ? { opacity: [0, 1, 1, 0] } : { opacity: 0 }}
-        transition={{ duration: 1.6, times: [0, 0.3, 0.55, 1] }}
-      />
-    );
-  }
-
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 z-[30]">
-      {/* The wash. Flat paper, so at the peak there is genuinely nothing to see
-          through — that is the window in which the night is removed. It clears
-          before the clouds do. */}
-      <motion.div
-        className="absolute inset-0 bg-paper"
-        initial={{ opacity: 0 }}
-        animate={active ? { opacity: [0, 1, 1, 0, 0] } : { opacity: 0 }}
-        transition={{
-          duration: EXIT.cloudsDur,
-          delay: active ? EXIT.cloudsAt : 0,
-          times: WASH_TIMES,
-          ease: "easeInOut",
-        }}
-      />
-
-      {CLOUDS.map((c, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            left: c.x,
-            top: c.y,
-            width: c.size,
-            height: c.size,
-            background: CLOUD_FILL,
-            // The radial fill already falls off softly, so the blur is only
-            // knocking the last edge off it. Measured: at 30px, five of these
-            // scaling past 1.8x dropped ~7 frames during the clear.
-            filter: "blur(18px)",
-          }}
-          initial={{ opacity: 0, scale: 0.62, x: "-50%", y: "-50%" }}
-          animate={
-            active
-              ? {
-                  opacity: [0, 1, 1, 0],
-                  scale: [0.62, 1.06, 1.2, 1.6],
-                  // Percentages are of the element's own box, so the centring
-                  // offset has to be carried through every keyframe.
-                  x: ["-50%", "-50%", "-50%", `calc(-50% + ${c.sideways}vw)`],
-                  y: ["-50%", "-50%", "-50%", `calc(-50% + ${c.rise}vh)`],
-                }
-              : { opacity: 0, scale: 0.62, x: "-50%", y: "-50%" }
-          }
-          transition={{
-            duration: EXIT.cloudsDur,
-            delay: active ? EXIT.cloudsAt - c.lead : 0,
-            times: [0, 0.36, 0.5 + c.hold, 1],
-            ease: CLOUD_EASE,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function GrassCopy({
+  drawn,
   leaving,
   reduced,
   onEnter,
 }: {
+  drawn: boolean;
   leaving: boolean;
   reduced: boolean;
   onEnter: () => void;
 }) {
-  // Two states now the white card is gone: present, and gone *upward*. Letting
-  // the copy leave the way it arrived would rewind the entrance instead of
-  // continuing it — beat 1 has to feel like departure.
+  /* Three states now, not two: waiting, present, and gone *upward*. Letting the
+     copy leave the way it arrived would rewind the entrance instead of
+     continuing it — the exit's first beat has to feel like departure.
+
+     While waiting it holds its initial pose exactly, so the delays below are
+     measured from the moment the field lands rather than from mount. Greeting
+     someone over a blank sheet is the thing this avoids. */
   const state = leaving
     ? { opacity: 0, y: reduced ? 0 : -18 }
-    : { opacity: 1, y: 0 };
+    : drawn
+      ? { opacity: 1, y: 0 }
+      : { opacity: 0, y: 18 };
 
   return (
-    /* Centred on the screen, as asked. Worth knowing what that costs: the type
-       now crosses the hills rather than sitting in clear sky above them, which
-       is why the block carries its own soft scrim below. Without it the lighter
-       hill ridges cut through the middle of the line. */
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
-      {/* The scrim leaves with the copy it backs. It used to be a plain div,
-          which meant it outlived the night by two seconds: the wash finishes
-          clearing at ~3.9s but the overlay only unmounts at 4.3s, so this dark
-          blob sat over the middle of the revealed hero until then. It holds
-          through the copy's own exit — the type needs its backing right up to
-          the last frame — and is gone well before the cloud thins. */}
+    /* Centred on the screen. Worth knowing what that costs: the type crosses
+       the ridges rather than sitting in clear sky above them, which is why the
+       block carries its own soft scrim below. */
+    /* `select-none` on the wrapper, so it covers the greeting and the button
+       together. Neither is text anyone would want to copy, and a stray drag
+       across a full-screen entrance leaves the whole line highlighted — which
+       looks like a mis-click, not a selection. */
+    <div className="absolute inset-0 z-10 flex select-none flex-col items-center justify-center px-6 text-center">
+      {/* Paper, not ink, now that the world beneath it is light — it lifts the
+          type off the ridges by clearing a space rather than by darkening one.
+          It leaves with the copy it backs: as a plain div it outlived the rest
+          of the exit and sat over the revealed hero as a visible smudge. */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-1/2 h-[46vh] -translate-y-1/2"
         style={{
           background:
-            "radial-gradient(60% 50% at 50% 50%, oklch(0.14 0.045 264 / 0.72) 0%, transparent 72%)",
+            "radial-gradient(58% 50% at 50% 50%, var(--color-paper) 0%, var(--color-paper) 34%, transparent 74%)",
         }}
         initial={{ opacity: 1 }}
         animate={{ opacity: leaving ? 0 : 1 }}
@@ -372,9 +303,6 @@ function GrassCopy({
         transition={{
           duration: leaving ? EXIT.copyOut : 1.1,
           ease: leaving ? "easeIn" : EASE,
-          // A beat longer than the old 0.4s: this is now the first thing on
-          // screen, and the night needs a moment to establish before it is
-          // written on.
           delay: leaving ? 0 : reduced ? 0 : 0.7,
         }}
         /* 5.2vw is measured, not chosen: the longest line is 20 characters and
@@ -382,7 +310,7 @@ function GrassCopy({
            a 390px screen. The line break is hand-placed for the same reason —
            set as one 33-character line it would have to drop to ~3.5vw and stop
            reading as a greeting. */
-        className="display relative text-[clamp(0.9rem,5.2vw,5rem)] text-paper"
+        className="display relative text-[clamp(0.9rem,5.2vw,5rem)] text-ink"
       >
         thank you for coming
         <br />
@@ -401,9 +329,10 @@ function GrassCopy({
         }}
         whileHover={leaving ? undefined : { y: -2 }}
         whileTap={leaving ? undefined : { y: 0 }}
-        /* The site's own sticker, inverted for the night. The blurred glass pill
-           this replaces belonged to no other part of the design. */
-        className="sticker sticker-solid sticker-lg relative mt-[5vh]"
+        /* Drawn, like everything else on this screen: an ink rule around paper,
+           filling with ink when pressed. The night version was a solid paper
+           chip, which on paper would be invisible. */
+        className="sticker sticker-outline sticker-lg relative mt-[5vh]"
       >
         Enter ↓
       </motion.button>

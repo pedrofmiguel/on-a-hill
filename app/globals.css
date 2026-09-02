@@ -15,12 +15,6 @@
   --color-rule: oklch(0 0 0 / 0.12); /* hairlines */
   --color-accent: #ff3b14; /* the one accent */
 
-  /* ---- Entrance gate only: the night world stays night ---- */
-  --color-night: oklch(0.14 0.045 264);
-  --color-sky: oklch(0.4 0.15 260);
-  --color-grass: oklch(0.52 0.15 145);
-  --color-grass-deep: oklch(0.22 0.09 150);
-
   --font-sans: var(--font-martian-mono);
   --font-mono: var(--font-martian-mono);
 }
@@ -141,6 +135,22 @@ button.sticker-solid:hover,
 a.sticker-solid:hover {
   background: var(--color-accent);
   color: var(--color-paper);
+}
+
+/* The entrance's button. On a drawn screen the primary action is drawn too:
+   an ink rule around paper, filling with ink when pressed. Declared after
+   `.sticker` and `.sticker-solid` so it wins on equal specificity — and the
+   hover rule after theirs for the same reason. */
+.sticker-outline {
+  background: transparent;
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-ink);
+}
+button.sticker-outline:hover,
+a.sticker-outline:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  box-shadow: none;
 }
 
 /* The one place a sticker is the primary action rather than a repeated tag. */
