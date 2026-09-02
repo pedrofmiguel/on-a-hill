@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# on a hill
 
-## Getting Started
+Pedro Ferreira's portfolio. A Next.js App Router site: an entrance gate that
+dissolves into a light monochrome poster, a projects drawer, and an about page
+with the work history on a timeline.
 
-First, run the development server:
+- **Framework** — Next.js 16 (App Router, Turbopack)
+- **Type** — Martian Mono via `next/font/google`, one face throughout, never
+  heavier than 500
+- **Styling** — Tailwind CSS v4, with the palette defined as `@theme` tokens in
+  `app/globals.css`
+- **Motion** — `motion` for component transitions, `lenis` for smooth scroll,
+  `three` + `@react-three/fiber` for the grass in the entrance gate
+
+## Running it locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The entrance gate only plays once per session — `sessionStorage` remembers that
+you have been through it. Append `?gate` to any URL to force it to replay.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build   # production build
+npm start       # serve the production build
+npm run lint    # eslint
+```
 
-## Learn More
+## Environment
 
-To learn more about Next.js, take a look at the following resources:
+There is one variable, and on Vercel you can ignore it:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable               | Required                | What it does                                                    |
+| ---------------------- | ----------------------- | --------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL` | No — only for a real domain | Origin used for canonical URLs, Open Graph, `robots.txt`, sitemap |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`app/site.ts` resolves the origin in order: `NEXT_PUBLIC_SITE_URL`, then
+`VERCEL_PROJECT_PRODUCTION_URL`, then `VERCEL_URL`, then `localhost:3000`. The
+two Vercel variables are injected automatically, so the site is correct on a
+`*.vercel.app` domain with nothing configured.
 
-## Deploy on Vercel
+Set `NEXT_PUBLIC_SITE_URL` (Production environment only) the day a custom domain
+is pointed at the project. See `.env.example`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploying to Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The repo needs no `vercel.json` — Next.js is detected, and the defaults are
+right for this site.
+
+1. Push the branch to GitHub.
+2. On [vercel.com/new](https://vercel.com/new), import the repository. Leave the
+   framework preset (Next.js), build command (`next build`) and output directory
+   as detected.
+3. Deploy. Preview deployments are built for every branch and pull request;
+   `main` becomes production.
+4. When a custom domain is added, set `NEXT_PUBLIC_SITE_URL` to it in Project
+   Settings → Environment Variables (Production), then redeploy so the sitemap
+   and share previews pick it up.
+
+Or from the CLI:
+
+```bash
+npx vercel        # preview deployment
+npx vercel --prod # production
+```
+
+Every route is static or prerendered except the intercepted project modal, so
+there is nothing to configure around regions, runtimes or caching.
+
+## A note on `AGENTS.md`
+
+`next dev` writes and re-adds the block in `AGENTS.md` itself. Removing it from a
+diff only recreates the change; commit it along with your work to keep the tree
+clean.
