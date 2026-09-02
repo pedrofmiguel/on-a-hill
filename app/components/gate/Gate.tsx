@@ -13,6 +13,31 @@ type Phase = "grass" | "leaving" | "done";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+/* The arrival, which is a loading screen wearing ordinary clothes.
+
+   The satellite and its orbit are up on the first frame — they are SVG and cost
+   nothing. Everything else waits for the grass, because the grass is the part
+   that takes time: a dynamic import, 15,000 instances to generate, and a shader
+   that compiles during its first draw. Drawing the ridges before that landed
+   meant the entrance played to an empty stage and the field then appeared, fully
+   formed, halfway through the greeting.
+
+   Two guards around the wait:
+
+   `minHold` is a floor, not a delay for its own sake. On a warm cache the field
+   is ready in well under 200ms, and without a floor the satellite would flash
+   past for three frames — which reads as a glitch, not as a loading screen. A
+   beat of the satellite alone is the whole idea.
+
+   `maxWait` is the giving-up point. If WebGL is blocked, unavailable, or simply
+   slow, `onGrassReady` never fires; without this the visitor would sit looking
+   at a satellite forever. At 4s the rest of the drawing goes ahead regardless
+   and the entrance plays without its field — degraded, but never stuck. */
+const ENTRANCE = {
+  minHold: 0.7,
+  maxWait: 4,
+};
+
 /* The exit is one continuous move cut into overlapping beats. The timings (in
    seconds, from the click) live together here so the choreography can be read
    at a glance instead of reconstructed from delays scattered across the file.
@@ -65,6 +90,13 @@ export default function Gate() {
   // Separate from `phase` because the field starts coming apart a beat *after*
   // the click, once the copy is already on its way out.
   const [fieldBreaking, setFieldBreaking] = useState(false);
+  // The field has painted (or we have stopped waiting for it): the rest of the
+  // drawing may begin.
+  const [drawn, setDrawn] = useState(false);
+  // Stamped in an effect rather than at `useRef(Date.now())`: reading the clock
+  // during render is impure, and a re-render would move the start of the hold.
+  const openedAt = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Later again: the ridges hold while the field is still visibly leaving, so
   // the two do not read as one event.
   const [ridgesOut, setRidgesOut] = useState(false);
@@ -109,6 +141,17 @@ export default function Gate() {
     setScrollLocked(false);
   }, [phase]);
 
+  // Never wait forever on a GPU. Also clears the hold timer, so a slow field
+  // that lands mid-unmount cannot set state on a gone component.
+  useEffect(() => {
+    openedAt.current = Date.now();
+    const giveUp = setTimeout(() => setDrawn(true), ENTRANCE.maxWait * 1000);
+    return () => {
+      clearTimeout(giveUp);
+      clearTimeout(holdTimer.current);
+    };
+  }, []);
+
   // The exit timers are started by a user gesture rather than a state change,
   // so they are owned by a ref — but they still have to be cleared if the
   // component goes away mid-exit.
@@ -117,8 +160,20 @@ export default function Gate() {
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  /* Raised on the field's second frame. Holds the signal back if it arrived
+     sooner than `minHold`, so a fast machine still gets a loading screen rather
+     than a flicker. Guarded because it costs nothing to be sure this runs once
+     — the give-up timer may have fired first. */
+  function handleGrassReady() {
+    if (drawn) return;
+    const elapsed = (Date.now() - openedAt.current) / 1000;
+    const remaining = Math.max(0, ENTRANCE.minHold - elapsed);
+    holdTimer.current = setTimeout(() => setDrawn(true), remaining * 1000);
+  }
+
   function enter() {
-    if (phase === "leaving" || phase === "done") return;
+    // Nothing to enter until there is something to leave.
+    if (!drawn || phase === "leaving" || phase === "done") return;
 
     try {
       sessionStorage.setItem(KEY, "1");
@@ -173,13 +228,20 @@ export default function Gate() {
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
           <Scene
+            drawn={drawn}
             leaving={leaving}
             ridgesOut={ridgesOut}
             dissolving={fieldBreaking}
             reduced={!!reduced}
+            onGrassReady={handleGrassReady}
           />
 
-          <GrassCopy leaving={leaving} reduced={!!reduced} onEnter={enter} />
+          <GrassCopy
+            drawn={drawn}
+            leaving={leaving}
+            reduced={!!reduced}
+            onEnter={enter}
+          />
         </motion.div>
       )}
     </AnimatePresence>
@@ -187,20 +249,28 @@ export default function Gate() {
 }
 
 function GrassCopy({
+  drawn,
   leaving,
   reduced,
   onEnter,
 }: {
+  drawn: boolean;
   leaving: boolean;
   reduced: boolean;
   onEnter: () => void;
 }) {
-  // Two states: present, and gone *upward*. Letting the copy leave the way it
-  // arrived would rewind the entrance instead of continuing it — beat 1 has to
-  // feel like departure.
+  /* Three states now, not two: waiting, present, and gone *upward*. Letting the
+     copy leave the way it arrived would rewind the entrance instead of
+     continuing it — the exit's first beat has to feel like departure.
+
+     While waiting it holds its initial pose exactly, so the delays below are
+     measured from the moment the field lands rather than from mount. Greeting
+     someone over a blank sheet is the thing this avoids. */
   const state = leaving
     ? { opacity: 0, y: reduced ? 0 : -18 }
-    : { opacity: 1, y: 0 };
+    : drawn
+      ? { opacity: 1, y: 0 }
+      : { opacity: 0, y: 18 };
 
   return (
     /* Centred on the screen. Worth knowing what that costs: the type crosses

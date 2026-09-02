@@ -22,11 +22,17 @@ const GrassField = dynamic(() => import("./GrassField"), { ssr: false });
  * `absolute`, not `fixed`.
  */
 export default function Scene({
+  drawn = false,
   leaving = false,
   ridgesOut = false,
   dissolving = false,
   reduced = false,
+  onGrassReady,
 }: {
+  /** The field has painted; the ridges may start being drawn. */
+  drawn?: boolean;
+  /** Raised once, when the field's first frame lands. */
+  onGrassReady?: () => void;
   /** The exit has begun: the satellite climbs away and the orbit fades. */
   leaving?: boolean;
   /** Later still — the ridges withdraw along their own length. */
@@ -43,8 +49,23 @@ export default function Scene({
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden bg-paper">
-      <LineSky leaving={leaving} ridgesOut={ridgesOut} reduced={reduced} />
-      {mounted && <GrassField dissolving={dissolving} />}
+      <LineSky
+        drawn={drawn}
+        leaving={leaving}
+        ridgesOut={ridgesOut}
+        reduced={reduced}
+      />
+      {/* Faded rather than switched on. The field's first frame is a complete
+          field — 15,000 blades appearing between one frame and the next is a
+          pop, however fast the load was. */}
+      {mounted && (
+        <div
+          className="absolute inset-0 transition-opacity duration-700 ease-out"
+          style={{ opacity: drawn ? 1 : 0 }}
+        >
+          <GrassField dissolving={dissolving} onReady={onGrassReady} />
+        </div>
+      )}
     </div>
   );
 }

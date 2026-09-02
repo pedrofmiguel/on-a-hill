@@ -247,9 +247,29 @@ const FRAG = /* glsl */ `
  *  closes — dissolving underneath an opaque wash is work nobody sees. */
 const DISSOLVE_SECONDS = 1.4;
 
-function Grass({ dissolving }: { dissolving: boolean }) {
+function Grass({
+  dissolving,
+  onReady,
+}: {
+  dissolving: boolean;
+  onReady?: () => void;
+}) {
   const geo = useMemo(() => makeBladeGeometry(), []);
   const mat = useRef<THREE.ShaderMaterial>(null);
+  // Counts frames rather than firing on mount. "Mounted" here would mean the
+  // component exists, which is two steps short of the field being visible:
+  // 15,000 instances still have to be generated, and the shader still has to
+  // compile — and compilation happens during the first draw, not before it. So
+  // the signal goes out on the second frame, by which point something has
+  // demonstrably been painted.
+  const frames = useRef(0);
+  // Held in a ref so the frame loop can reach the latest callback without the
+  // loop itself depending on it. Assigned in an effect, not during render:
+  // writing a ref while rendering is a purity violation React will flag.
+  const ready = useRef(onReady);
+  useEffect(() => {
+    ready.current = onReady;
+  }, [onReady]);
 
   // Where the pointer is (`to`) versus where the wake has caught up to (`at`).
   // Tracked on window rather than through R3F's pointer, because the canvas
@@ -299,6 +319,12 @@ function Grass({ dissolving }: { dissolving: boolean }) {
 
   useFrame((state, delta) => {
     if (!mat.current) return;
+
+    if (frames.current <= 2) {
+      frames.current += 1;
+      if (frames.current === 2) ready.current?.();
+    }
+
     const u = mat.current.uniforms;
     u.uTime.value = state.clock.elapsedTime;
     u.uResolution.value.set(
@@ -351,9 +377,12 @@ function Rig() {
 
 export default function GrassField({
   dissolving = false,
+  onReady,
 }: {
   /** Flip once, on the way out: the field tears loose and blows away. */
   dissolving?: boolean;
+  /** Fired once, after the field has actually drawn a frame. */
+  onReady?: () => void;
 }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-[2]">
@@ -365,7 +394,7 @@ export default function GrassField({
         <Rig />
         <ambientLight intensity={0.42} color="#9aacbf" />
         <directionalLight position={[-4, 9, 3]} intensity={0.85} color="#c4d0e4" />
-        <Grass dissolving={dissolving} />
+        <Grass dissolving={dissolving} onReady={onReady} />
       </Canvas>
     </div>
   );

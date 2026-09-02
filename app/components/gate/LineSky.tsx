@@ -87,12 +87,23 @@ const ORBIT_PATH = (() => {
    drawing behind it does — it is a separate, square-pixel layer that merely
    agrees with the guide line about where the orbit is. */
 const STOPS = 24;
+
+/* The sweep runs off the left edge to past the right, so the craft is always
+   arriving from somewhere rather than spawning in view — and then the whole
+   cycle is rotated so it *begins* a fifth of the way along, already on screen.
+   
+   That rotation is not a flourish. This screen doubles as the loading state
+   while the grass compiles, and starting at -8% meant the one thing a visitor
+   was supposed to watch spent the entire hold outside the frame: a blank sheet
+   of paper with nothing on it. Rotating the keyframes moves the discontinuity —
+   the jump from 116% back to -8% — to four fifths of the way through the loop,
+   where it is off-screen at both ends and so cannot be seen. */
+const START_AT = 0.2;
+
 const ORBIT_X: string[] = [];
 const ORBIT_Y: string[] = [];
 for (let i = 0; i <= STOPS; i++) {
-  const t = i / STOPS;
-  // Starts off the left edge and leaves past the right, so it is always
-  // arriving from somewhere rather than spawning in view.
+  const t = ((i / STOPS + START_AT) % 1 + 1) % 1;
   ORBIT_X.push(`${(-8 + t * 116).toFixed(2)}%`);
   ORBIT_Y.push(`${orbitY(t).toFixed(2)}%`);
 }
@@ -126,10 +137,16 @@ const DRIFT: Transition = {
  * keeps the three from sliding off as one sheet.
  */
 export default function LineSky({
+  drawn = false,
   leaving = false,
   ridgesOut = false,
   reduced = false,
 }: {
+  /** The grass is up: start drawing the ridges in. Until this flips they sit
+   *  at zero length, so the satellite and its orbit are alone on the paper and
+   *  the screen reads as a drawing that has not been made yet rather than as
+   *  one that is missing its middle. */
+  drawn?: boolean;
   /** The satellite climbs out of frame and the orbit fades. */
   leaving?: boolean;
   /** A beat later: the ridges withdraw. Scheduled by the gate rather than
@@ -158,8 +175,8 @@ export default function LineSky({
           initial={{ opacity: 0 }}
           animate={{ opacity: leaving ? 0 : 1 }}
           transition={{
-            duration: leaving ? 0.5 : 1.6,
-            delay: leaving ? 0 : 0.5,
+            duration: leaving ? 0.5 : 1.2,
+            delay: leaving ? 0 : 0.1,
             ease: "easeOut",
           }}
         />
@@ -170,7 +187,13 @@ export default function LineSky({
             d={r.d}
             stroke={r.stroke}
             strokeWidth={r.width}
-            strokeLinecap="round"
+            /* Butt caps, deliberately. A round cap on a dash of length zero is
+               still drawn — as a dot — so with `pathLength: 0` all three ridges
+               left a visible speck sitting at the left edge of the screen
+               throughout the loading hold, before a single line existed. Butt
+               caps render nothing at zero length, which is what "not drawn yet"
+               should look like. Nothing is lost: these are long, nearly
+               horizontal lines whose ends run off both edges of the frame. */
             vectorEffect="non-scaling-stroke"
             /* `pathLength` and `pathOffset` are motion's own props, not SVG
                attributes: it normalises the path to a length of 1 and derives
@@ -189,7 +212,7 @@ export default function LineSky({
                leave in different directions instead of as one sheet. */
             initial={{ pathLength: 0, pathOffset: 0 }}
             animate={{
-              pathLength: ridgesOut ? 0 : 1,
+              pathLength: ridgesOut || !drawn ? 0 : 1,
               pathOffset: ridgesOut && r.fromEnd ? 1 : 0,
             }}
             transition={{
@@ -235,7 +258,10 @@ function Satellite({ leaving, reduced }: { leaving: boolean; reduced: boolean })
           : {
               left: reduced ? { duration: 0 } : DRIFT,
               top: reduced ? { duration: 0 } : DRIFT,
-              opacity: { duration: 1.4, delay: 0.8, ease: "easeOut" },
+              // Up almost at once: everything else on this screen waits for the
+              // grass, so during that wait the satellite is the only thing
+              // telling the visitor the page is alive rather than broken.
+              opacity: { duration: 0.7, delay: 0.1, ease: "easeOut" },
             }
       }
     >
