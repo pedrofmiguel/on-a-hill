@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Project } from "../../data/projects";
 
 // The full write-up for a single project. Rendered both as a standalone page
@@ -18,11 +19,22 @@ export default function ProjectDetail({ project }: { project: Project }) {
         {project.summary}
       </p>
 
-      {/* Standing in for a hero shot: the project's flat colour, full width. */}
-      <div
-        className="mt-10 aspect-[16/10] w-full border border-rule"
-        style={{ background: project.accent }}
-      />
+      {/* A hero shot when there is one, and nothing at all when there is not.
+          This used to fall back to a full-width block of the project's accent
+          colour, which was meant to stand in for a screenshot and instead read
+          as an image that had failed to load. An empty slot says less and is
+          honest; the prose simply starts a beat earlier. */}
+      {project.image && (
+        <Image
+          src={project.image.src}
+          alt={project.image.alt}
+          width={project.image.width}
+          height={project.image.height}
+          className="mt-10 aspect-[16/10] w-full border border-rule object-cover"
+          sizes="(min-width: 768px) 62rem, 100vw"
+          priority
+        />
+      )}
 
       <div className="mt-10 max-w-[62ch] space-y-5 text-base leading-[1.55] text-ink-2">
         {project.body.map((para, i) => (

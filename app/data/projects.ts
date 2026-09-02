@@ -18,7 +18,17 @@ export type Project = {
   tags: string[];
   /** Optional live link. */
   url?: string;
-  /** Accent used for the card's ambient glow (any CSS color). */
+  /**
+   * Optional hero shot for the detail view, as a path under `public/`.
+   * Without one the write-up simply runs straight from the summary into the
+   * prose — there is no placeholder. A flat block of the accent colour used to
+   * stand in here, and it read as a broken image rather than as a choice.
+   */
+  image?: { src: string; alt: string; width: number; height: number };
+  /**
+   * The project's colour. Backs the folder tab on hover — and permanently on
+   * touch, where there is no hover to trigger it.
+   */
   accent: string;
 };
 
@@ -103,6 +113,12 @@ export const PROJECTS: Project[] = [
     ],
     tags: ["WordPress", "PHP", "HTML", "CSS", "Booking System"],
     url: "https://www.rocksteady-barbearia.com/",
+    image: {
+      src: "/projects/rocksteady-barbearia.png",
+      alt: "The Rocksteady Barbearia homepage: ROCKSTEADY set across the full width of the screen in white on deep green, a dotted halftone drifting behind the type, and a single Marcações button below it.",
+      width: 3200,
+      height: 2000,
+    },
     /* Sampled from the live stylesheet, not matched by eye: #015136. */
     accent: "oklch(0.385 0.083 162)",
   },
