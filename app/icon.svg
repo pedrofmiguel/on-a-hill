@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The site's one accent (#ff3b14, --color-accent in globals.css), and
+       nothing else. No letterform, no background plate: at 16px a monogram in
+       this typeface is mud, and a circle is still a circle.
+
+       Transparent ground on purpose, so it reads on a light tab strip and a
+       dark one alike. r=14 leaves a little air inside the 32px box — at r=15
+       the disc kisses the edge and looks clipped wherever the tab rounds it. -->
+  <circle cx="16" cy="16" r="14" fill="#ff3b14"/>
+</svg>
