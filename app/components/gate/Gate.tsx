@@ -348,13 +348,22 @@ function GrassCopy({
        is why the block carries its own soft scrim below. Without it the lighter
        hill ridges cut through the middle of the line. */
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
-      <div
+      {/* The scrim leaves with the copy it backs. It used to be a plain div,
+          which meant it outlived the night by two seconds: the wash finishes
+          clearing at ~3.9s but the overlay only unmounts at 4.3s, so this dark
+          blob sat over the middle of the revealed hero until then. It holds
+          through the copy's own exit — the type needs its backing right up to
+          the last frame — and is gone well before the cloud thins. */}
+      <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-1/2 h-[46vh] -translate-y-1/2"
         style={{
           background:
             "radial-gradient(60% 50% at 50% 50%, oklch(0.14 0.045 264 / 0.72) 0%, transparent 72%)",
         }}
+        initial={{ opacity: 1 }}
+        animate={{ opacity: leaving ? 0 : 1 }}
+        transition={{ duration: EXIT.copyOut, ease: "easeIn" }}
       />
 
       <motion.h2
