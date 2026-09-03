@@ -39,6 +39,40 @@ function resolveSiteUrl(): string {
 export const SITE_URL = resolveSiteUrl();
 
 /**
+ * Google Analytics 4 measurement ID.
+ *
+ * Public by design — it ships in the client bundle on every page, and there is
+ * nothing to protect. It lives here with the rest of the site's identity rather
+ * than in an env var precisely because it is not a secret and never varies: an
+ * unset variable would mean analytics silently not reporting, which is the kind
+ * of failure nobody notices for six months.
+ *
+ * Note this is gtag.js / GA4, not Tag Manager, despite the googletagmanager.com
+ * host the script is served from. They are different products: GTM containers
+ * have `GTM-` ids and would need `GoogleTagManager` instead of
+ * `GoogleAnalytics`.
+ */
+export const GA_ID = "G-3EE3TGCE51";
+
+/**
+ * Whether to report at all.
+ *
+ * Off in development, so `next dev` never counts as traffic. Off on Vercel
+ * preview deployments, so a branch nobody has seen does not land in the same
+ * property as the real site and quietly skew a month of numbers.
+ *
+ * Deliberately phrased as "not a preview" rather than "is production". If
+ * `NEXT_PUBLIC_VERCEL_ENV` is ever absent — a different host, a change on
+ * Vercel's side — the first form keeps reporting from the live site and the
+ * second would silently stop. Given the choice between over-reporting on
+ * previews and never reporting at all, this fails toward working.
+ */
+export const ANALYTICS_ENABLED =
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PUBLIC_VERCEL_ENV !== "preview" &&
+  process.env.NEXT_PUBLIC_VERCEL_ENV !== "development";
+
+/**
  * Contact address. Referenced by the footer, the menu and the hero — a real
  * mailbox, deliberately not tied to the site's own domain so it keeps working
  * whatever happens to that.

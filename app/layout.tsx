@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Martian_Mono } from "next/font/google";
 import "./globals.css";
 import SiteBackground from "./components/site/SiteBackground";
 import SiteNav from "./components/site/SiteNav";
 import Footer from "./components/site/Footer";
 import Gate from "./components/gate/Gate";
-import { SITE_URL } from "./site";
+import { ANALYTICS_ENABLED, GA_ID, SITE_URL } from "./site";
 import SmoothScroll from "./components/site/SmoothScroll";
 
 // One face for the entire site, after the Brain Dead reference: monospace top
@@ -68,6 +69,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Footer />
 
         <Gate />
+
+        {/* Last in the body, and only on the live site. `GoogleAnalytics` loads
+            gtag with Next's own script strategy rather than a raw <script async>
+            in <head>, so it is deferred behind the page instead of competing
+            with it — the entrance is the first thing a visitor sees and it
+            should not be waiting on an analytics request.
+
+            GA4's enhanced measurement listens to History API changes, so client
+            -side navigations between /projects and /about are counted without
+            anything firing a pageview by hand. That is on by default in the
+            property; if it is ever switched off, route changes stop being
+            recorded and the numbers quietly become homepage-only. */}
+        {ANALYTICS_ENABLED && <GoogleAnalytics gaId={GA_ID} />}
       </body>
     </html>
   );
